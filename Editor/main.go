@@ -35,7 +35,7 @@ func main() {
         BackgroundColour:  &options.RGBA{R: 255, G: 255, B: 255, A: 255},
         Assets:            assets,
         LogLevel:          logger.DEBUG,
-        //OnStartup:         app.startup,
+        OnStartup:         app.startup,
         //OnDomReady:        app.domReady,
         //OnShutdown:        app.shutdown,
         Bind: []interface{}{

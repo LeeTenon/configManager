@@ -2,32 +2,28 @@ package configManager
 
 import (
     "context"
-    "encoding/json"
-    "fmt"
     "io"
     "io/ioutil"
-    "myproject/pkg/logx"
+    "myproject/common/logx"
     "os"
     "path"
-    "reflect"
     "sync"
 
-    "github.com/gitHusband/goutils/jsonkeys"
     "gopkg.in/yaml.v2"
 )
 
 const (
-    // configTemplatePath = "NBServer/tools/configManager/template.json"
-    // configCachePath    = "NBServer/tools/configManager/cache.json"
-    configTemplatePath = "../template.json"
-    configCachePath    = "../cache.json"
+    configTemplatePath = "NBServer/tools/configManager/template.json"
+    configCachePath    = "NBServer/tools/configManager/cache.json"
     csvSource          = "Programs/ClientData/CSVData/"
     jsonSource         = "Programs/ClientData/JsonData/"
     csvDir             = "NBServer/data/CSVData/"
     jsonDir            = "NBServer/data/JsonData/"
     syncConfig         = "NBServer/tools/configManager/sync.yaml"
+    configDir          = "NBServer/config/"
 
-    configDir = "NBServer/config/"
+    //configTemplatePath = "../template.json"
+    //configCachePath    = "../cache.json"
 )
 
 type ConfigManager struct {
@@ -42,10 +38,10 @@ var Manager = &ConfigManager{
 func (c *ConfigManager) Save(ctx context.Context, dataJson string) error {
     err := writeFile("", configCachePath, []byte(dataJson))
     if err != nil {
-        logx.GloLog.Info(fmt.Sprintf("Save config error: %s", err.Error()))
+        logx.Errorf("save config error: %s", err.Error())
         return err
     }
-    logx.GloLog.Info("Save config complete!")
+    logx.Infof("save config complete!")
 
     return nil
 }
@@ -53,35 +49,35 @@ func (c *ConfigManager) Save(ctx context.Context, dataJson string) error {
 func (c *ConfigManager) LoadTemplate(ctx context.Context) (string, error) {
     data, err := os.ReadFile(configTemplatePath)
     if err != nil {
-        logx.GloLog.Info(fmt.Sprintf("open file error: %s", err.Error()))
+        logx.Errorf("open file error: %s", err.Error())
         return "", err
     }
+    logx.Infof("load template success")
+
     return string(data), nil
 }
 
 func (c *ConfigManager) LoadCache(ctx context.Context) (string, error) {
     data, err := os.ReadFile(configCachePath)
     if err != nil {
-        logx.GloLog.Info(fmt.Sprintf("open file error: %s", err.Error()))
+        logx.Errorf("open file error: %s", err.Error())
         return "", err
     }
+    logx.Infof("load cache success")
+
     return string(data), nil
 }
 
-func (c *ConfigManager) Generate(mode string) error {
-    for serviceName, config := range c.template {
-        target := getTarget(config.(map[string]interface{})[mode])
-        result, err := yaml.Marshal(target)
+func (c *ConfigManager) Generate(yamlData map[string]string) error {
+    for serviceName, data := range yamlData {
+        err := writeFile(path.Join(configDir, serviceName), serviceName+".yaml", []byte(data))
         if err != nil {
-            logx.GloLog.Info(fmt.Sprintf("Marshal yaml[%s] error: %s", serviceName, err.Error()))
-            continue
-        }
-        err = writeFile(path.Join(configDir, serviceName), serviceName+".yaml", result)
-        if err != nil {
-            logx.GloLog.Info(fmt.Sprintf("Generate yaml[%s] error: %s", serviceName, err.Error()))
+            logx.Errorf("generate yaml[%s] error: %s", serviceName, err.Error())
+        } else {
+            logx.Infof("generate %s config success", serviceName)
         }
     }
-    logx.GloLog.Info("Generate config complete!")
+    logx.Infof("generate config complete!")
 
     return nil
 }
@@ -91,11 +87,11 @@ type table struct {
     Json []string `yaml:"json"`
 }
 
-func (c *ConfigManager) SyncCsv() error {
+func (c *ConfigManager) SyncCsv(ctx context.Context) error {
     // 读取需要读取的表
     data, err := ioutil.ReadFile(syncConfig)
     if err != nil {
-        logx.GloLog.Info(fmt.Sprintf("Load csvConfig error: %s", err))
+        logx.Errorf("load csvConfig error: %s", err)
         return err
     }
     tableInfo := &table{
@@ -103,89 +99,42 @@ func (c *ConfigManager) SyncCsv() error {
         Json: make([]string, 0),
     }
     if err = yaml.Unmarshal(data, tableInfo); err != nil {
-        logx.GloLog.Info(fmt.Sprintf("Unmarshall csvConfig error: %s", err.Error()))
+        logx.Errorf("unmarshall csvConfig error: %s", err.Error())
         return err
     }
     // 同步Csv
     for _, name := range tableInfo.Csv {
         content, err := ioutil.ReadFile(path.Join(csvSource, name))
         if err != nil {
-            logx.GloLog.Info(fmt.Sprintf("Read file[%s] error: %s", name, err.Error()))
+            logx.Errorf("read csv[%s] error: %s", name, err.Error())
             continue
         }
         if err = writeFile(csvDir, name, content); err != nil {
-            logx.GloLog.Info(fmt.Sprintf("Write file error: %s", err))
+            logx.Errorf("write csv[%s] error: %s", name, err.Error())
+            continue
         }
+        logx.Infof("sync csv data [%s] success", name)
     }
     // 同步Json
     for _, name := range tableInfo.Json {
         content, err := ioutil.ReadFile(path.Join(jsonSource, name))
         if err != nil {
-            logx.GloLog.Info(fmt.Sprintf("Read file[%s] error: %s", name, err.Error()))
+            logx.Errorf("read json[%s] error: %s", name, err.Error())
             continue
         }
         if err = writeFile(jsonDir, name, content); err != nil {
-            logx.GloLog.Info(fmt.Sprintf("Write file error: %s", err.Error()))
-        }
-    }
-
-    logx.GloLog.Info("Sync csv success!")
-    return nil
-}
-
-func getTarget(data interface{}) interface{} {
-    target := make(map[string]interface{})
-    for k, v := range data.(map[string]interface{}) {
-        if reflect.TypeOf(v).Kind() == reflect.Map {
-            sub := getTarget(v).(map[string]interface{})
-            if len(sub) != 0 {
-                target[k] = sub
-            }
+            logx.Errorf("write json[%s] error: %s", name, err.Error())
             continue
         }
-        if reflect.TypeOf(v).Kind() == reflect.Slice && len(v.([]interface{})) == 0 {
-            continue
-        }
-        if v == nil || v == "" || v == float64(0) || v == false {
-            continue
-        }
-        target[k] = v
+        logx.Infof("sync json data [%s] success", name)
     }
-    return target
-}
-
-func (c *ConfigManager) loadTemplate() error {
-    data, err := os.ReadFile(configTemplatePath)
-    if err != nil {
-        logx.GloLog.Info(fmt.Sprintf("open file error: %s", err.Error()))
-        return err
-    }
-    jsMap, _ := jsonkeys.ParseFromData(data)
-    logx.GloLog.Info(fmt.Sprintf("Marshal config error: %#v", jsMap))
-    err = json.Unmarshal(data, &c.template)
-    if err != nil {
-        logx.GloLog.Info(fmt.Sprintf("open file error: %s", err.Error()))
-        return err
-    }
+    logx.Infof("sync data files complete, total: %s files!", len(tableInfo.Csv)+len(tableInfo.Json))
 
     return nil
-}
-
-func setValue(dst, src map[string]interface{}) {
-    for key, value := range src {
-        if _, ok := dst[key]; ok {
-            if reflect.TypeOf(value).Kind() == reflect.Map && reflect.TypeOf(dst[key]).Kind() == reflect.Map {
-                setValue(dst[key].(map[string]interface{}), value.(map[string]interface{}))
-            } else {
-                dst[key] = value
-            }
-        }
-    }
 }
 
 func writeFile(p, filename string, content []byte) error {
     filePath := path.Join(p, filename)
-    logx.GloLog.Info(fmt.Sprintf("write: %s", filePath))
     var f *os.File
     if _, err := os.Stat(filePath); os.IsNotExist(err) {
         f, err = os.Create(filePath) //创建文件

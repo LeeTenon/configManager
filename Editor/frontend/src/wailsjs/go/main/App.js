@@ -6,10 +6,6 @@ export function GenConfig(arg1) {
   return window['go']['main']['App']['GenConfig'](arg1);
 }
 
-export function GetLog() {
-  return window['go']['main']['App']['GetLog']();
-}
-
 export function LoadConfigCache() {
   return window['go']['main']['App']['LoadConfigCache']();
 }

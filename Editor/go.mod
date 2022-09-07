@@ -3,7 +3,6 @@ module myproject
 go 1.18
 
 require (
-	github.com/gitHusband/goutils v0.1.0
 	github.com/wailsapp/wails/v2 v2.0.0-beta.44.2
 	gopkg.in/yaml.v2 v2.3.0
 )

@@ -3,12 +3,22 @@
     <el-container>
       <el-header class="header" style="--wails-draggable: drag">
         <div>
-          <el-select v-model="mode" class="select" placeholder="请选择导出模式" style="width: 150px; margin-right: 10px">
-            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+          <el-select
+            v-model="mode"
+            class="select"
+            placeholder="请选择导出模式"
+            style="width: 150px; margin-right: 10px"
+          >
+            <el-option
+              v-for="item in options"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
-          <el-button type="primary" @click="GenerateConfig(mode)">生成配置</el-button>
+          <el-button type="primary" @click="GenerateConfig()">生成配置</el-button>
           <el-button type="primary" @click="SaveConfig()">保存配置</el-button>
-          <el-button type="primary" @click="SyncCsv()">同步csv表</el-button>
+          <el-button type="primary" @click="SyncDataTable()">同步数据表</el-button>
         </div>
         <Toolbar />
       </el-header>
@@ -21,7 +31,11 @@
             <template #title>
               <h4>{{ service }}</h4>
             </template>
-            <el-menu-item v-for="(mode, i) in modes" :index="service + '-' + mode" @click="handleSelect">
+            <el-menu-item
+              v-for="(mode, i) in modes"
+              :index="service + '-' + mode"
+              @click="handleSelect"
+            >
               {{ mode }}
             </el-menu-item>
           </el-sub-menu>
@@ -29,21 +43,36 @@
       </el-aside>
       <!--数据主体-->
       <el-main>
-        <el-table :data="showing" style="width: 100%;" :max-height="height" row-key="id" border>
+        <el-table
+          :data="showing"
+          style="width: 100%"
+          :max-height="height"
+          row-key="id"
+          border
+        >
           <el-table-column prop="name" label="配置项" style="width: 50%">
             <template #default="scope">
-              <div v-if="scope.row.name.split('#').length>1" style="display: flex; align-items: center">
-                <span>{{scope.row.name.split('#')[0]}}</span>
-                <el-tag type="info" style="margin-left: 10px;">Slice</el-tag>
-              </div>
-              <span v-else>{{scope.row.name}}</span>
+              <span
+                v-if="scope.row.name.split('#').length > 1"
+                style="display: flex; align-items: center"
+              >
+                <span>{{ scope.row.name.split("#")[0] }}</span>
+                <el-tag type="info" style="margin-left: 10px">Slice</el-tag>
+              </span>
+              <span v-else>{{ scope.row.name }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="value" label="值" style="width: 50%">
             <template #default="scope">
-              <div style="display: flex; align-items: center">
-                <el-input-number v-if="typeof scope.row.value == 'number'" v-model="scope.row.value"/>
-                <el-input v-else v-model="scope.row.value" placeholder="Please input" />
+              <div
+                v-if="scope.row.children.length == 0"
+                style="display: flex; align-items: center"
+              >
+                <el-input-number
+                  v-if="typeof scope.row.value == 'number'"
+                  v-model="scope.row.value"
+                />
+                <el-input v-else v-model="scope.row.value" />
               </div>
             </template>
           </el-table-column>
@@ -54,10 +83,11 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
+import { stringify } from "yaml";
 
 // const hack = {
 //   "challenge": {
@@ -79,60 +109,82 @@ import Toolbar from "./toolbar/toolbar.vue";
 // }
 
 // Init
-onBeforeMount(() => {
+onMounted(() => {
   LoadConfig();
 });
 
 // APIs
 const LoadConfig = async () => {
-  let template: any
-  let cache: any
+  let template: any;
+  let cache: any;
   await window.go.main.App.LoadConfigTemplate().then((resp: any) => {
-    template = JSON.parse(resp)
+    template = JSON.parse(resp);
   });
   await window.go.main.App.LoadConfigCache().then((resp: any) => {
-    cache = JSON.parse(resp)
+    cache = JSON.parse(resp);
   });
-  console.log(cache)
-  setValue(cache, template)
+  setValue(cache, template);
   getMenu(template);
   toTree(template);
 };
 const SaveConfig = () => {
-  console.log(JSON.stringify(toData(treeData.value)))
-  window.go.main.App.SaveConfig(JSON.stringify(toData(treeData.value))).then((res: any) => {
-    handleRes(res);
-  });
-};
-const GenerateConfig = async (mode: string) => {
-  await window.go.main.App.SaveConfig(toData(treeData.value));
-  window.go.main.App.GenConfig(mode).then((response: any) =>
-    ElNotification({
-      title: "Success",
-      message: "配置文件导出成功",
-      type: "success",
-    })
+  window.go.main.App.SaveConfig(JSON.stringify(toData(treeData.value))).then(
+    (res: any) => {
+      handleRes(res, "保存成功");
+    }
   );
 };
-const SyncCsv = () => {
-  window.go.main.App.SyncCsv().then((response: any) =>
-    ElNotification({
-      title: "Success",
-      message: "csv同步成功",
-      type: "success",
+const GenerateConfig = async () => {
+  let m = mode.value;
+  if (m == "") {
+    return ElNotification({
+      title: "Notice",
+      message: "请选择导出模式",
+      type: "info",
     })
+  }
+  let data = toData(treeData.value);
+  let result = {};
+  for (let i in data) {
+    if (data[i][m] != undefined) {
+      trimDefault(data[i][m]);
+      result[i] = stringify(data[i][m]);
+    }
+  }
+  SaveConfig()
+  ElNotification({
+      title: "Notice",
+      message: JSON.stringify(result),
+      type: "info",
+    })
+  await window.go.main.App.GenConfig(result).then((resp: any) =>
+    handleRes(resp, "配置文件导出成功")
   );
 };
-
+const SyncDataTable = () => {
+  window.go.main.App.SyncCsv().then((resp: any) => handleRes(resp, "数据表同步成功"));
+};
+function trimDefault(data: any) {
+  for (let i in data) {
+    if (data[i] instanceof Object && !Array.isArray(data[i])) {
+      trimDefault(data[i]);
+      if (Object.keys(data[i]).length === 0) {
+        delete data[i];
+      }
+    } else if (data[i] == 0 || data[i] == "" || data[i].length == 0) {
+      delete data[i];
+    }
+  }
+}
 // Data
 interface tree {
-  [index: string]: Node[]
+  [index: string]: Node[];
 }
 interface Node {
-  id: number
-  name: string
-  value: any
-  children: Node[]
+  id: number;
+  name: string;
+  value: any;
+  children: Node[];
 }
 const treeData = ref({} as tree);
 const showing = ref();
@@ -169,9 +221,10 @@ const options = [
   },
 ];
 
-let gID = 0
+let gID = 0;
 // 数据处理
-function toTree(data: any) {  //转换树形
+function toTree(data: any) {
+  //转换树形
   for (let index in data) {
     for (let i in data[index]) {
       treeData.value[index + "-" + i] = subTree(data[index][i]);
@@ -179,31 +232,31 @@ function toTree(data: any) {  //转换树形
   }
 }
 function subTree(data: any) {
-  let nodes = new Array<Node>()
+  let nodes = new Array<Node>();
   for (let index in data) {
     const node: Node = {
       id: gID,
       name: index,
       value: "",
-      children: []
-    }
-    gID++
+      children: [],
+    };
+    gID++;
 
     if (Array.isArray(data[index])) {
-      console.log("find array:", index)
-      node.name = node.name + "#array"
-      let a = data[index]
-      node.value = a.toString()
+      node.name = node.name + "#array";
+      let a = data[index];
+      node.value = a.toString();
     } else if (data[index] instanceof Object) {
-      node.children = subTree(data[index])
+      node.children = subTree(data[index]);
     } else {
-      node.value = data[index]
+      node.value = data[index];
     }
-    nodes.push(node)
+    nodes.push(node);
   }
-  return nodes
+  return nodes;
 }
-function toData(data: tree) { //还原数据
+function toData(data: tree) {
+  //还原数据
   let configs = {};
   for (let index in data) {
     let service = index.substring(0, index.indexOf("-"));
@@ -220,11 +273,9 @@ function toData(data: tree) { //还原数据
 function subData(data: Node[]) {
   let config: any = {};
   for (let i = 0; i < data.length; i++) {
-    if (data[i].name == "Shu") {
-      console.log(data[i].value)
-    }
     if (data[i].children.length == 0) {
-      if (data[i].name.split("#").length > 1) { // 数组
+      if (data[i].name.split("#").length > 1) {
+        // 数组
         if (data[i].value == "") {
           config[data[i].name.split("#")[0]] = [];
         } else {
@@ -243,11 +294,11 @@ function setValue(src: any, dst: any) {
   for (let i in src) {
     if (dst[i] != undefined) {
       if (src[i] instanceof Object && dst[i] instanceof Object) {
-        setValue(src[i], dst[i])
-      } else if (typeof src[i] == typeof dst[i]){
-        dst[i] = src[i]
+        setValue(src[i], dst[i]);
+      } else if (typeof src[i] == typeof dst[i]) {
+        dst[i] = src[i];
       } else {
-        console.log("mistake type: ", i)
+        console.log("mistake type: ", i);
       }
     }
   }
@@ -258,17 +309,17 @@ const handleSelect = (item: any) => {
   let s = item.index;
   showing.value = treeData.value[s];
 };
-const handleRes = (res: string) => {
-  if (res) {
+const handleRes = (resp: string, successMsg: string) => {
+  if (resp != "") {
     ElNotification({
       title: "Error",
-      message: res,
+      message: resp,
       type: "error",
     });
   } else {
     ElNotification({
       title: "Success",
-      message: "保存成功",
+      message: successMsg,
       type: "success",
     });
   }

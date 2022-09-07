@@ -1,1 +1,134 @@
-{"assets":{"dev":{"Name":"aaa","Mode":"aaa","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":"1231"}}},"pro":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}}},"qa":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}}},"test":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}}}},"challenge":{"dev":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}},"Spec":{"ServerCallTimeout":0,"RewardUnlockTimeout":0}},"pro":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}},"Spec":{"ServerCallTimeout":0,"RewardUnlockTimeout":0}},"qa":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}},"Spec":{"ServerCallTimeout":0,"RewardUnlockTimeout":0}},"test":{"Name":"","Mode":"","Database":{"Mysql":{"Host":""},"Redis":{"Host":"","Timeout":0,"Shu":0}},"Spec":{"ServerCallTimeout":0,"RewardUnlockTimeout":0}}}}
+{
+    "assets": {
+        "dev": {
+            "Name": "aaa",
+            "Mode": "aaa",
+            "Database": {
+                "Mysql": {
+                    "Host": "asdasd"
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            }
+        },
+        "pro": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            }
+        },
+        "qa": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            }
+        },
+        "test": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            }
+        }
+    },
+    "challenge": {
+        "dev": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            },
+            "Spec": {
+                "ServerCallTimeout": 0,
+                "RewardUnlockTimeout": 0
+            }
+        },
+        "pro": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            },
+            "Spec": {
+                "ServerCallTimeout": 0,
+                "RewardUnlockTimeout": 0
+            }
+        },
+        "qa": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            },
+            "Spec": {
+                "ServerCallTimeout": 0,
+                "RewardUnlockTimeout": 0
+            }
+        },
+        "test": {
+            "Name": "",
+            "Mode": "",
+            "Database": {
+                "Mysql": {
+                    "Host": ""
+                },
+                "Redis": {
+                    "Host": "",
+                    "Timeout": 0,
+                    "Shu": 0
+                }
+            },
+            "Spec": {
+                "ServerCallTimeout": 0,
+                "RewardUnlockTimeout": 0
+            }
+        }
+    }
+}

@@ -2,8 +2,8 @@ package main
 
 import (
     "context"
+    "myproject/common/logx"
     configManager "myproject/configManage"
-    "myproject/pkg/logx"
 )
 
 // App struct
@@ -14,6 +14,11 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
     return &App{}
+}
+
+// startup is called at application startup
+func (a *App) startup(ctx context.Context) {
+    logx.InitLogger(ctx)
 }
 
 func (a *App) LoadConfigTemplate() interface{} {
@@ -33,20 +38,16 @@ func (a *App) SaveConfig(in string) string {
     return ""
 }
 
-func (a *App) GenConfig(mode string) string {
-    if err := configManager.Manager.Generate(mode); err != nil {
+func (a *App) GenConfig(in map[string]string) string {
+    if err := configManager.Manager.Generate(in); err != nil {
         return err.Error()
     }
     return ""
 }
 
 func (a *App) SyncCsv() string {
-    if err := configManager.Manager.SyncCsv(); err != nil {
+    if err := configManager.Manager.SyncCsv(a.ctx); err != nil {
         return err.Error()
     }
     return ""
-}
-
-func (a *App) GetLog() string {
-    return logx.GloLog.GetLogs()
 }
