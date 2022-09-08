@@ -21,10 +21,10 @@ type BaseConfig struct {
     Mode     string
     Database struct {
         Mysql struct {
-            Host string
+            Host []string
         }
         Redis struct {
-            Host    string
+            Host    []string
             Timeout time.Duration
             Shu     int
         }

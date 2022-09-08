@@ -42,20 +42,19 @@
         </el-menu>
       </el-aside>
       <!--数据主体-->
-      <el-main>
+      <el-main id="main-body">
         <el-table
           :data="showing"
           style="width: 100%"
           :max-height="height"
           row-key="id"
+          :expand-row-keys="expendedRow"
+          @expand-change="handleExpend"
           border
         >
           <el-table-column prop="name" label="配置项" style="width: 50%">
             <template #default="scope">
-              <span
-                v-if="scope.row.name.split('#').length > 1"
-                style="display: flex; align-items: center"
-              >
+              <span v-if="scope.row.name.split('#').length > 1">
                 <span>{{ scope.row.name.split("#")[0] }}</span>
                 <el-tag type="info" style="margin-left: 10px">Slice</el-tag>
               </span>
@@ -68,8 +67,9 @@
                 v-if="scope.row.children.length == 0"
                 style="display: flex; align-items: center"
               >
-                <el-input-number
+                <el-input
                   v-if="typeof scope.row.value == 'number'"
+                  type="number"
                   v-model="scope.row.value"
                 />
                 <el-input v-else v-model="scope.row.value" />
@@ -141,7 +141,8 @@ const GenerateConfig = async () => {
       title: "Notice",
       message: "请选择导出模式",
       type: "info",
-    })
+      duration: 1000,
+    });
   }
   let data = toData(treeData.value);
   let result = {};
@@ -151,12 +152,7 @@ const GenerateConfig = async () => {
       result[i] = stringify(data[i][m]);
     }
   }
-  SaveConfig()
-  ElNotification({
-      title: "Notice",
-      message: JSON.stringify(result),
-      type: "info",
-    })
+  SaveConfig();
   await window.go.main.App.GenConfig(result).then((resp: any) =>
     handleRes(resp, "配置文件导出成功")
   );
@@ -181,7 +177,7 @@ interface tree {
   [index: string]: Node[];
 }
 interface Node {
-  id: number;
+  id: string;
   name: string;
   value: any;
   children: Node[];
@@ -235,13 +231,12 @@ function subTree(data: any) {
   let nodes = new Array<Node>();
   for (let index in data) {
     const node: Node = {
-      id: gID,
+      id: gID.toString(),
       name: index,
       value: "",
       children: [],
     };
     gID++;
-
     if (Array.isArray(data[index])) {
       node.name = node.name + "#array";
       let a = data[index];
@@ -293,7 +288,11 @@ function subData(data: Node[]) {
 function setValue(src: any, dst: any) {
   for (let i in src) {
     if (dst[i] != undefined) {
-      if (src[i] instanceof Object && dst[i] instanceof Object) {
+      if (
+        src[i] instanceof Object &&
+        dst[i] instanceof Object &&
+        !Array.isArray(src[i])
+      ) {
         setValue(src[i], dst[i]);
       } else if (typeof src[i] == typeof dst[i]) {
         dst[i] = src[i];
@@ -315,12 +314,14 @@ const handleRes = (resp: string, successMsg: string) => {
       title: "Error",
       message: resp,
       type: "error",
+      duration: 1000,
     });
   } else {
     ElNotification({
       title: "Success",
       message: successMsg,
       type: "success",
+      duration: 1000,
     });
   }
 };
@@ -336,6 +337,22 @@ function getMenu(data: any) {
     for (let mode in data[key]) {
       menu.value[key].push(mode);
     }
+  }
+}
+
+// Style
+const expendedRow = ref([] as string[]);
+const handleExpend = (row: any, isExpend: boolean) => {
+  if (isExpend) {
+    expendedRow.value.push(row.id);
+  } else {
+    remove(expendedRow.value, row.id);
+  }
+};
+function remove(dst: string[], key: string) {
+  var index = dst.indexOf(key);
+  if (index > -1) {
+    dst.splice(index, 1);
   }
 }
 </script>
