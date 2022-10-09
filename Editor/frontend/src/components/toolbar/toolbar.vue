@@ -1,7 +1,7 @@
 <template>
   <div class="window-tool">
     <div>
-      <el-popover placement="bottom" :width="500" trigger="click" class="pop">
+      <el-popover placement="bottom" :width="1000" trigger="click" class="pop">
         <template #reference>
           <el-button plain style="border: none" @click="showLog">
             <svg

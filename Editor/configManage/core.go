@@ -130,7 +130,7 @@ func (c *ConfigManager) SyncCsv(ctx context.Context) error {
         }
         logx.Infof("sync json data [%s] success", name)
     }
-    logx.Infof("sync data files complete, total: %s files!", len(tableInfo.Csv)+len(tableInfo.Json))
+    logx.Infof("sync data files complete, total: %d files!", len(tableInfo.Csv)+len(tableInfo.Json))
 
     return nil
 }

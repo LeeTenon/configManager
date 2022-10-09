@@ -100,7 +100,8 @@ const GenerateConfig = async () => {
       title: "Notice",
       message: "请选择导出模式",
       type: "info",
-    })
+      duration: 1000,
+    });
   }
   let data = toData(treeData.value);
   let result = {};
@@ -130,7 +131,7 @@ interface tree {
   [index: string]: Node[];
 }
 interface Node {
-  id: number;
+  id: string;
   name: string;
   value: any;
   children: Node[];
@@ -183,13 +184,12 @@ function subTree(data: any) {
   let nodes = new Array<Node>();
   for (let index in data) {
     const node: Node = {
-      id: gID,
+      id: gID.toString(),
       name: index,
       value: "",
       children: [],
     };
     gID++;
-
     if (Array.isArray(data[index])) {
       node.name = node.name + "#array";
       let a = data[index];
@@ -240,7 +240,11 @@ function subData(data: Node[]) {
 function setValue(src: any, dst: any) {
   for (let i in src) {
     if (dst[i] != undefined) {
-      if (src[i] instanceof Object && dst[i] instanceof Object) {
+      if (
+        src[i] instanceof Object &&
+        dst[i] instanceof Object &&
+        !Array.isArray(src[i])
+      ) {
         setValue(src[i], dst[i]);
       } else if (typeof src[i] == typeof dst[i]) {
         dst[i] = src[i];
@@ -262,12 +266,14 @@ const handleRes = (resp: string, successMsg: string) => {
       title: "Error",
       message: resp,
       type: "error",
+      duration: 1000,
     });
   } else {
     ElNotification({
       title: "Success",
       message: successMsg,
       type: "success",
+      duration: 1000,
     });
   }
 };
@@ -283,6 +289,22 @@ function getMenu(data: any) {
     for (let mode in data[key]) {
       menu.value[key].push(mode);
     }
+  }
+}
+
+// Style
+const expendedRow = ref([] as string[]);
+const handleExpend = (row: any, isExpend: boolean) => {
+  if (isExpend) {
+    expendedRow.value.push(row.id);
+  } else {
+    remove(expendedRow.value, row.id);
+  }
+};
+function remove(dst: string[], key: string) {
+  var index = dst.indexOf(key);
+  if (index > -1) {
+    dst.splice(index, 1);
   }
 }
 </script>
