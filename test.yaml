@@ -1,6 +1,0 @@
-assets:
-    dev:
-        Etcd:
-            Key: rpc
-        GameMode: god
-        ListenOn: "8088"

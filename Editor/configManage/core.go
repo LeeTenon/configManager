@@ -13,17 +13,17 @@ import (
 )
 
 const (
-    configTemplatePath = "NBServer/tools/configManager/template.json"
-    configCachePath    = "NBServer/tools/configManager/cache.json"
-    csvSource          = "Programs/ClientData/CSVData/"
-    jsonSource         = "Programs/ClientData/JsonData/"
-    csvDir             = "NBServer/data/CSVData/"
-    jsonDir            = "NBServer/data/JsonData/"
-    syncConfig         = "NBServer/tools/configManager/sync.yaml"
-    configDir          = "NBServer/config/"
+    //configTemplatePath = "NBServer/tools/configManager/template.json"
+    //configCachePath    = "NBServer/tools/configManager/cache.json"
+    csvSource  = "Programs/ClientData/CSVData/"
+    jsonSource = "Programs/ClientData/JsonData/"
+    csvDir     = "NBServer/data/CSVData/"
+    jsonDir    = "NBServer/data/JsonData/"
+    syncConfig = "NBServer/tools/configManager/sync.yaml"
+    configDir  = "NBServer/config/"
 
-    //configTemplatePath = "../template.json"
-    //configCachePath    = "../cache.json"
+    configTemplatePath = "../template.json"
+    configCachePath    = "../cache.json"
 )
 
 type ConfigManager struct {
@@ -31,19 +31,10 @@ type ConfigManager struct {
     template map[string]interface{}
 }
 
-var Manager = &ConfigManager{
-    template: make(map[string]interface{}),
-}
-
-func (c *ConfigManager) Save(ctx context.Context, dataJson string) error {
-    err := writeFile("", configCachePath, []byte(dataJson))
-    if err != nil {
-        logx.Errorf("save config error: %s", err.Error())
-        return err
+func NewConfigManager() *ConfigManager {
+    return &ConfigManager{
+        template: make(map[string]interface{}),
     }
-    logx.Infof("save config complete!")
-
-    return nil
 }
 
 func (c *ConfigManager) LoadTemplate(ctx context.Context) (string, error) {
@@ -66,6 +57,17 @@ func (c *ConfigManager) LoadCache(ctx context.Context) (string, error) {
     logx.Infof("load cache success")
 
     return string(data), nil
+}
+
+func (c *ConfigManager) Save(ctx context.Context, dataJson string) error {
+    err := writeFile("", configCachePath, []byte(dataJson))
+    if err != nil {
+        logx.Errorf("save config error: %s", err.Error())
+        return err
+    }
+    logx.Infof("save config complete!")
+
+    return nil
 }
 
 func (c *ConfigManager) Generate(yamlData map[string]string) error {

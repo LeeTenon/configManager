@@ -10,9 +10,9 @@ import (
 
 var (
     mode     = []string{"dev", "test", "qa", "pro"}
-    services = map[string]interface{}{ //key请小写->对应yaml文件的名称
-        "challenge": initStruct(&Challenge{}),
-        "assets":    initStruct(&Assets{}),
+    services = map[string]interface{}{ //key -> 对应yaml文件的名称
+        "challenge": initStruct(&ConfigTemplate{Spec: getChallengeSpec()}),
+        "assets":    initStruct(&ConfigTemplate{Spec: getChallengeSpec()}),
     }
 )
 
@@ -46,7 +46,7 @@ func main() {
     _ = f.Close()
 }
 
-func initStruct(data interface{}) interface{} {
+func initStruct(data *ConfigTemplate) interface{} {
     t := reflect.TypeOf(data).Elem()
     v := reflect.ValueOf(data).Elem()
     subStruct(t, v)
@@ -61,4 +61,9 @@ func subStruct(t reflect.Type, v reflect.Value) {
             subStruct(t.Field(i).Type, v.Field(i))
         }
     }
+}
+
+func setDefault(c *ConfigTemplate, serviceName string, mode string) {
+    c.Name = "rpc." + serviceName
+    c.Mode = mode
 }

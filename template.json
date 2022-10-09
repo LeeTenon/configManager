@@ -2,7 +2,7 @@
 	"assets": {
 		"dev": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -12,11 +12,15 @@
 					"Timeout": 0,
 					"Shu": 0
 				}
-			}
+			},
+			"Spec": {
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		},
 		"pro": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -26,11 +30,15 @@
 					"Timeout": 0,
 					"Shu": 0
 				}
-			}
+			},
+			"Spec": {
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		},
 		"qa": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -40,11 +48,15 @@
 					"Timeout": 0,
 					"Shu": 0
 				}
-			}
+			},
+			"Spec": {
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		},
 		"test": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -54,13 +66,17 @@
 					"Timeout": 0,
 					"Shu": 0
 				}
-			}
+			},
+			"Spec": {
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		}
 	},
 	"challenge": {
 		"dev": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -72,13 +88,13 @@
 				}
 			},
 			"Spec": {
-				"ServerCallTimeout": 0,
-				"RewardUnlockTimeout": 0
-			}
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		},
 		"pro": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -90,13 +106,13 @@
 				}
 			},
 			"Spec": {
-				"ServerCallTimeout": 0,
-				"RewardUnlockTimeout": 0
-			}
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		},
 		"qa": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -108,13 +124,13 @@
 				}
 			},
 			"Spec": {
-				"ServerCallTimeout": 0,
-				"RewardUnlockTimeout": 0
-			}
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		},
 		"test": {
 			"Name": "",
-			"Mode": "",
+			"Etcd": [],
 			"Database": {
 				"Mysql": {
 					"Host": ""
@@ -126,9 +142,9 @@
 				}
 			},
 			"Spec": {
-				"ServerCallTimeout": 0,
-				"RewardUnlockTimeout": 0
-			}
+				"ServerCallTimeout": ""
+			},
+			"Mode": ""
 		}
 	}
 }

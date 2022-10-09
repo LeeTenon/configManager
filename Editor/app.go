@@ -6,48 +6,59 @@ import (
     configManager "myproject/configManage"
 )
 
-// App struct
 type App struct {
-    ctx context.Context
+    ctx       context.Context
+    configMgr *configManager.ConfigManager
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
-    return &App{}
+    return &App{
+        configMgr: configManager.NewConfigManager(),
+    }
 }
 
-// startup is called at application startup
 func (a *App) startup(ctx context.Context) {
     logx.InitLogger(ctx)
 }
 
-func (a *App) LoadConfigTemplate() interface{} {
-    data, _ := configManager.Manager.LoadTemplate(a.ctx)
-    return data
-}
-
-func (a *App) LoadConfigCache() interface{} {
-    data, _ := configManager.Manager.LoadCache(a.ctx)
-    return data
-}
-
-func (a *App) SaveConfig(in string) string {
-    if err := configManager.Manager.Save(a.ctx, in); err != nil {
-        return err.Error()
+func (a *App) LoadConfigTemplate() *Response {
+    data, err := a.configMgr.LoadTemplate(a.ctx)
+    if err != nil {
+        return &Response{Error: err.Error()}
     }
-    return ""
+    return &Response{Data: data}
 }
 
-func (a *App) GenConfig(in map[string]string) string {
-    if err := configManager.Manager.Generate(in); err != nil {
-        return err.Error()
+func (a *App) LoadConfigCache() *Response {
+    data, err := a.configMgr.LoadCache(a.ctx)
+    if err != nil {
+        return &Response{Error: err.Error()}
     }
-    return ""
+    return &Response{Data: data}
 }
 
-func (a *App) SyncCsv() string {
-    if err := configManager.Manager.SyncCsv(a.ctx); err != nil {
-        return err.Error()
+func (a *App) SaveConfig(in string) *Response {
+    if err := a.configMgr.Save(a.ctx, in); err != nil {
+        return &Response{Error: err.Error()}
     }
-    return ""
+    return &Response{}
+}
+
+func (a *App) GenConfig(in map[string]string) *Response {
+    if err := a.configMgr.Generate(in); err != nil {
+        return &Response{Error: err.Error()}
+    }
+    return &Response{}
+}
+
+func (a *App) SyncCsv() *Response {
+    if err := a.configMgr.SyncCsv(a.ctx); err != nil {
+        return &Response{Error: err.Error()}
+    }
+    return &Response{}
+}
+
+type Response struct {
+    Error string
+    Data  interface{}
 }

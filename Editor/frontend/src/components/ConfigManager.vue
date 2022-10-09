@@ -3,18 +3,8 @@
     <el-container>
       <el-header class="header" style="--wails-draggable: drag">
         <div>
-          <el-select
-            v-model="mode"
-            class="select"
-            placeholder="请选择导出模式"
-            style="width: 150px; margin-right: 10px"
-          >
-            <el-option
-              v-for="item in options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+          <el-select v-model="mode" class="select" placeholder="请选择导出模式" style="width: 150px; margin-right: 10px">
+            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
           <el-button type="primary" @click="GenerateConfig()">生成配置</el-button>
           <el-button type="primary" @click="SaveConfig()">保存配置</el-button>
@@ -31,11 +21,7 @@
             <template #title>
               <h4>{{ service }}</h4>
             </template>
-            <el-menu-item
-              v-for="(mode, i) in modes"
-              :index="service + '-' + mode"
-              @click="handleSelect"
-            >
+            <el-menu-item v-for="(mode, i) in modes" :index="service + '-' + mode" @click="handleSelect">
               {{ mode }}
             </el-menu-item>
           </el-sub-menu>
@@ -43,19 +29,10 @@
       </el-aside>
       <!--数据主体-->
       <el-main>
-        <el-table
-          :data="showing"
-          style="width: 100%"
-          :max-height="height"
-          row-key="id"
-          border
-        >
+        <el-table :data="showing" style="width: 100%" :max-height="height" row-key="id" border size="small">
           <el-table-column prop="name" label="配置项" style="width: 50%">
             <template #default="scope">
-              <span
-                v-if="scope.row.name.split('#').length > 1"
-                style="display: flex; align-items: center"
-              >
+              <span v-if="scope.row.name.split('#').length > 1" style="display: flex; align-items: center">
                 <span>{{ scope.row.name.split("#")[0] }}</span>
                 <el-tag type="info" style="margin-left: 10px">Slice</el-tag>
               </span>
@@ -64,14 +41,8 @@
           </el-table-column>
           <el-table-column prop="value" label="值" style="width: 50%">
             <template #default="scope">
-              <div
-                v-if="scope.row.children.length == 0"
-                style="display: flex; align-items: center"
-              >
-                <el-input-number
-                  v-if="typeof scope.row.value == 'number'"
-                  v-model="scope.row.value"
-                />
+              <div v-if="scope.row.children.length == 0" style="display: flex; align-items: center">
+                <el-input-number v-if="typeof scope.row.value == 'number'" v-model="scope.row.value" />
                 <el-input v-else v-model="scope.row.value" />
               </div>
             </template>
@@ -85,28 +56,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
+import { stringify } from "yaml";
+import { trimDefault } from "../function/tools"
+
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
-import { stringify } from "yaml";
-
-// const hack = {
-//   "challenge": {
-//     "dev": {
-//       "Name": "rpc.challenge",
-//       "Mode": "dev",
-//       "Redis": {
-//         "Host": "redis:6379"
-//       }
-//     },
-//     "pro": {
-//       "Name": "rpc.challenge",
-//       "Mode": "pro",
-//       "Redis": {
-//         "Host": "redis:6379"
-//       }
-//     }
-//   }
-// }
 
 // Init
 onMounted(() => {
@@ -118,15 +72,19 @@ const LoadConfig = async () => {
   let template: any;
   let cache: any;
   await window.go.main.App.LoadConfigTemplate().then((resp: any) => {
-    template = JSON.parse(resp);
+    template = JSON.parse(resp.Data);
   });
   await window.go.main.App.LoadConfigCache().then((resp: any) => {
-    cache = JSON.parse(resp);
+    cache = JSON.parse(resp.Data);
   });
+  // 同步缓存值到模板
   setValue(cache, template);
+  // 根据模板生成菜单项
   getMenu(template);
+  // 生成树形表格
   toTree(template);
 };
+
 const SaveConfig = () => {
   window.go.main.App.SaveConfig(JSON.stringify(toData(treeData.value))).then(
     (res: any) => {
@@ -134,6 +92,7 @@ const SaveConfig = () => {
     }
   );
 };
+
 const GenerateConfig = async () => {
   let m = mode.value;
   if (m == "") {
@@ -153,29 +112,19 @@ const GenerateConfig = async () => {
   }
   SaveConfig()
   ElNotification({
-      title: "Notice",
-      message: JSON.stringify(result),
-      type: "info",
-    })
+    title: "Notice",
+    message: JSON.stringify(result),
+    type: "info",
+  })
   await window.go.main.App.GenConfig(result).then((resp: any) =>
     handleRes(resp, "配置文件导出成功")
   );
 };
+
 const SyncDataTable = () => {
   window.go.main.App.SyncCsv().then((resp: any) => handleRes(resp, "数据表同步成功"));
 };
-function trimDefault(data: any) {
-  for (let i in data) {
-    if (data[i] instanceof Object && !Array.isArray(data[i])) {
-      trimDefault(data[i]);
-      if (Object.keys(data[i]).length === 0) {
-        delete data[i];
-      }
-    } else if (data[i] == 0 || data[i] == "" || data[i].length == 0) {
-      delete data[i];
-    }
-  }
-}
+
 // Data
 interface tree {
   [index: string]: Node[];
@@ -200,12 +149,12 @@ window.onresize = () => {
 const mode = ref("");
 const options = [
   {
-    label: "Dev-开发",
+    label: "Dev",
     value: "dev",
   },
   {
-    label: "Pro-生产",
-    value: "pro",
+    label: "Dev-Debug",
+    value: "test",
   },
   {
     label: "QA",
@@ -221,10 +170,9 @@ const options = [
   },
 ];
 
-let gID = 0;
 // 数据处理
-function toTree(data: any) {
-  //转换树形
+var gID = 0;
+function toTree(data: any) { //转换树形
   for (let index in data) {
     for (let i in data[index]) {
       treeData.value[index + "-" + i] = subTree(data[index][i]);
@@ -255,8 +203,7 @@ function subTree(data: any) {
   }
   return nodes;
 }
-function toData(data: tree) {
-  //还原数据
+function toData(data: tree) {  //还原数据
   let configs = {};
   for (let index in data) {
     let service = index.substring(0, index.indexOf("-"));

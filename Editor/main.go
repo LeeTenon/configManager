@@ -41,14 +41,10 @@ func main() {
         Bind: []interface{}{
             app,
         },
-        // Windows platform specific options
         Windows: &windows.Options{
             WebviewIsTransparent: false,
             WindowIsTranslucent:  false,
             DisableWindowIcon:    true,
-        },
-        Experimental: &options.Experimental{
-            UseCSSDrag: true,
         },
     })
     if err != nil {

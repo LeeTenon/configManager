@@ -4,21 +4,21 @@ import (
     "time"
 )
 
-type Challenge struct {
+type ConfigTemplate struct {
     BaseConfig
-    Spec struct {
-        ServerCallTimeout   time.Duration `json:",default=100ms"`
-        RewardUnlockTimeout time.Duration `json:",default=100ms"`
-    }
+    Spec interface{} `json:",omitempty"`
+    Mode string
 }
 
-type Assets struct {
-    BaseConfig
+func getChallengeSpec() interface{} {
+    return &struct {
+        ServerCallTimeout string
+    }{}
 }
 
 type BaseConfig struct {
     Name     string
-    Mode     string
+    Etcd     []string
     Database struct {
         Mysql struct {
             Host string
