@@ -8,6 +8,8 @@ export function LoadConfigCache():Promise<main.Response>;
 
 export function LoadConfigTemplate():Promise<main.Response>;
 
+export function LoadProto():Promise<main.Response>;
+
 export function SaveConfig(arg1:string):Promise<main.Response>;
 
 export function SyncCsv():Promise<main.Response>;

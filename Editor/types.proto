@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package config;
+
+message RpcServerConfig {
+  Etcd etcd = 1;
+  Database database = 2;
+  TaskHandler taskHandler = 3;
+  string mode = 10;
+}
+
+message Database {
+  Mysql mysql = 1;
+  Redis redis = 2;
+  Dynamo dynamo = 3;
+
+  message Mysql {
+    string Host = 1;
+  }
+  message Redis {
+    string Host = 1;
+  }
+  message Dynamo {
+    string Host = 1;
+  }
+}
+
+message TaskHandler {
+
+}
+
+message Etcd {
+  repeated string Host = 1;
+  string key = 2;
+}
+
+message EtcdNoKey {
+  repeated string Host = 1;
+}
+
+enum Level {
+  WARNING = 0;
+  FATAL = 1;
+  SEVERE = 2;
+}

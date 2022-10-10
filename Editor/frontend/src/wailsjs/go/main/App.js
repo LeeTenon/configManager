@@ -14,6 +14,10 @@ export function LoadConfigTemplate() {
   return window['go']['main']['App']['LoadConfigTemplate']();
 }
 
+export function LoadProto() {
+  return window['go']['main']['App']['LoadProto']();
+}
+
 export function SaveConfig(arg1) {
   return window['go']['main']['App']['SaveConfig'](arg1);
 }

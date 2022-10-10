@@ -58,22 +58,78 @@ import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
 import { stringify } from "yaml";
 import { trimDefault } from "../function/tools"
-
+import { toPB } from "../pb/function"
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
 
 // Init
 onMounted(() => {
+  LoadPB()
   LoadConfig();
 });
 
+var oriTemplate: any
+var template = {}
+const LoadPB = async () => {
+  await window.go.main.App.LoadProto().then((resp: any) => {
+    oriTemplate = toPB(resp.Data);
+    toTemplate(oriTemplate)
+    console.log(template)
+  });
+}
+
+function toTemplate(src: any) {
+  for (let field in src) {
+    if (field.includes("_Config")) {
+      template[field] = checkField(src[field]["fields"])
+    }
+  }
+}
+
+function checkField(src: any): any {
+  let obj = {}
+  for (let field in src) {
+    //数组
+    if (src[field]["rule"] == "repeated") {  
+      obj[field] = []
+      continue
+    }
+    //非数组
+    switch (src[field]["type"]) {
+      case "int":
+        obj[field] = 0
+        break;
+      case "string":
+        obj[field] = ""
+        break;
+      default:
+        let h = findType(src[field]["type"])
+        if (field == "_") {  //继承字段
+          for (let i in h) {
+            obj[i] = h[i]
+          }
+        } else {
+          obj[field] = h
+        }
+        break;
+    }
+  }
+  return obj
+}
+
+function findType(tName: string): any {
+  if (oriTemplate[tName] != undefined) {
+    return checkField(oriTemplate[tName]["fields"])
+  }
+}
+
 // APIs
 const LoadConfig = async () => {
-  let template: any;
+  // let template: any;
   let cache: any;
-  await window.go.main.App.LoadConfigTemplate().then((resp: any) => {
-    template = JSON.parse(resp.Data);
-  });
+  // await window.go.main.App.LoadConfigTemplate().then((resp: any) => {
+  //   template = JSON.parse(resp.Data);
+  // });
   await window.go.main.App.LoadConfigCache().then((resp: any) => {
     cache = JSON.parse(resp.Data);
   });

@@ -4,6 +4,7 @@ import (
     "context"
     "myproject/common/logx"
     configManager "myproject/configManage"
+    "os"
 )
 
 type App struct {
@@ -61,4 +62,15 @@ func (a *App) SyncCsv() *Response {
 type Response struct {
     Error string
     Data  interface{}
+}
+
+func (a *App) LoadProto() *Response {
+    data1, err := os.ReadFile("./test.proto")
+    data2, err := os.ReadFile("./types.proto")
+    if err != nil {
+        logx.Errorf("open file error: %s", err.Error())
+    }
+    return &Response{
+        Data: []string{string(data1), string(data2)},
+    }
 }

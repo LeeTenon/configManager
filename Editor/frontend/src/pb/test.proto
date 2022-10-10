@@ -1,0 +1,13 @@
+package awesomepackage;
+syntax = "proto3";
+
+message AwesomeMessage {
+    string awesome_field = 1; // becomes awesomeField
+    Level level = 2;
+}
+
+enum Level {
+    WARNING = 0;
+    FATAL = 1;
+    SEVERE = 2;
+}
