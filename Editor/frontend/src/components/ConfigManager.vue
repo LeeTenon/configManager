@@ -17,13 +17,42 @@
       <el-aside width="150px" class="aside">
         <Logo />
         <el-menu class="menu">
-          <el-sub-menu v-for="(modes, service) in menu" :index="service">
+          <el-sub-menu v-for="(configs, service) in treeData" :index="service">
             <template #title>
               <h4>{{ service }}</h4>
             </template>
-            <el-menu-item v-for="(mode, i) in modes" :index="service + '-' + mode" @click="handleSelect">
-              {{ mode }}
+            <el-menu-item v-for="(config, mode) in configs" :index="service + '-' + mode" @click="handleSelect(service + '-' + mode,service as string,mode as string)">
+              <div style="display: flex;width:calc(100% - 30px);">
+                <div>
+                  {{ mode }}
+                </div>
+                <div v-if="showDelete == service + '-' + mode" class="delete-buttom" @click="deleteHandle">
+                  <el-icon style="margin-left: 5px;">
+                    <Close />
+                  </el-icon>
+                </div>
+              </div>
             </el-menu-item>
+            <el-popover placement="right" :width="430" trigger="click" :visible="isVisible(service as string)"
+              @before-leave="hideHandle">
+              <template #reference>
+                <div class="add-line" @click="addHandle(service as string)">
+                  <el-icon color="white">
+                    <Plus />
+                  </el-icon>
+                </div>
+              </template>
+              <div class="add-confirm-box">
+                复制模板：
+                <el-select placeholder="Select" clearable v-model="addTag">
+                  <el-option v-for="(config, mode) in configs" :key="mode" :label="mode" :value="mode" />
+                </el-select>
+                <div style="  margin-left: auto;">
+                  <el-button type="primary" @click="addConfig(service as string)">确定</el-button>
+                  <el-button type="primary" @click="cancelAdd">取消</el-button>
+                </div>
+              </div>
+            </el-popover>
           </el-sub-menu>
         </el-menu>
       </el-aside>
@@ -32,9 +61,9 @@
         <el-table :data="showing" style="width: 100%" :max-height="height" row-key="id" border size="small">
           <el-table-column prop="name" label="配置项" style="width: 50%">
             <template #default="scope">
-              <span v-if="scope.row.name.split('#').length > 1" style="display: flex; align-items: center">
-                <span>{{ scope.row.name.split("#")[0] }}</span>
-                <el-tag type="info" style="margin-left: 10px">Slice</el-tag>
+              <span v-if="scope.row.type=='slice'" style="align-items: center">
+                <span>{{ scope.row.name}}</span>
+                <el-tag type="info" style="margin-left: 10px" size="small">Slice</el-tag>
               </span>
               <span v-else>{{ scope.row.name }}</span>
             </template>
@@ -42,12 +71,25 @@
           <el-table-column prop="value" label="值" style="width: 50%">
             <template #default="scope">
               <div v-if="scope.row.children.length == 0" style="display: flex; align-items: center">
-                <el-input-number v-if="typeof scope.row.value == 'number'" v-model="scope.row.value" />
-                <el-input v-else v-model="scope.row.value" />
+                <el-select v-if="scope.row.type.substring(0,5) == 'enum:'" class="m-2" placeholder="Select" size="small"
+                  clearable v-model="scope.row.value">
+                  <el-option v-for="(value,key) in enums[scope.row.type.substring(5)]" :key="value" :label="key"
+                    :value="key" />
+                </el-select>
+                <el-input-number v-else-if="typeof scope.row.value == 'number'" v-model="scope.row.value"
+                  size="small" />
+                <el-input v-else v-model="scope.row.value" size="small" />
               </div>
             </template>
           </el-table-column>
         </el-table>
+        <div class="container">
+          <a class="btn btn-3">
+            <el-icon color="white">
+              <Plus />
+            </el-icon>
+          </a>
+        </div>
       </el-main>
     </el-container>
   </div>
@@ -58,87 +100,109 @@ import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
 import { stringify } from "yaml";
 import { trimDefault } from "../function/tools"
-import { toPB } from "../pb/function"
+import { loadPB } from "../function/pb"
+import { Search, Close } from '@element-plus/icons-vue'
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
-
+import { add } from "lodash";
+const addTag = ref("")
 // Init
-onMounted(() => {
-  LoadPB()
-  LoadConfig();
+onMounted(async () => {
+  await LoadPB()
+  await LoadConfig();
 });
 
-var oriTemplate: any
-var template = {}
-const LoadPB = async () => {
-  await window.go.main.App.LoadProto().then((resp: any) => {
-    oriTemplate = toPB(resp.Data);
-    toTemplate(oriTemplate)
-    console.log(template)
-  });
+// 菜单UI
+const showDelete = ref("")
+const visible = ref("")
+function deleteHandle() {
+  console.log("删除")
 }
-
-function toTemplate(src: any) {
-  for (let field in src) {
-    if (field.includes("_Config")) {
-      template[field] = checkField(src[field]["fields"])
-    }
-  }
+function addHandle(name: string) {
+  visible.value = name
 }
-
-function checkField(src: any): any {
-  let obj = {}
-  for (let field in src) {
-    //数组
-    if (src[field]["rule"] == "repeated") {  
-      obj[field] = []
+function cancelAdd() {
+  visible.value = ""
+}
+function isVisible(curNmae: string) {
+  return visible.value == curNmae
+}
+function hideHandle() {
+  addTag.value = ""
+}
+function addConfig(service: string) {
+  visible.value = ""
+  for (let i = 1; ; i++) {
+    if (service + "-" + "new_" + i in treeData.value) {
       continue
     }
-    //非数组
-    switch (src[field]["type"]) {
-      case "int":
-        obj[field] = 0
-        break;
-      case "string":
-        obj[field] = ""
-        break;
-      default:
-        let h = findType(src[field]["type"])
-        if (field == "_") {  //继承字段
-          for (let i in h) {
-            obj[i] = h[i]
-          }
-        } else {
-          obj[field] = h
-        }
-        break;
-    }
+    treeData.value[service]["new_" + i] = subTree(configData[service][addTag.value]);
+    break
   }
-  return obj
 }
 
-function findType(tName: string): any {
-  if (oriTemplate[tName] != undefined) {
-    return checkField(oriTemplate[tName]["fields"])
+// Proto
+var configData = {}
+var template = {}
+var enums = ref()
+const LoadPB = () => {
+  window.go.main.App.LoadProto().then((resp: any) => {
+    let pb = loadPB(resp.Data)
+    template = genConfigTemplate(pb.pbObj)
+    enums.value = genEnums(pb.enums)
+  });
+}
+function genEnums(src: any) {
+  let set = {}
+  for (let kind in src) {
+    let e = {}
+    for (let key in src[kind]) {
+      var keyToAny: any = key;
+      if (isNaN(keyToAny)) {
+        e[key] = src[kind][key]
+      }
+    }
+    set[kind] = e
   }
+  return set
+}
+function genConfigTemplate(data: any): any {
+  let config = {}
+  for (let field in data) {
+    if (field.includes("_Config")) {
+      config[field.split('_')[0].toLowerCase()] = data[field]
+    }
+  }
+  return config
+}
+function genConfig(cache: any): any {
+  let configs = {}
+  console.log("缓存： ", cache)
+  for (let svc in template) {
+    if (cache != null && svc in cache[svc]) {
+      for (let mode in cache) {
+        configs[svc][mode] = setValue(cache[svc][mode], Object.assign({}, template[svc]))
+      }
+    } else {
+      console.log("新服务: ", svc)
+      configs[svc] = {}
+      configs[svc]["template"] = Object.assign({}, template[svc])
+    }
+  }
+  console.log(configs)
+  return configs
 }
 
 // APIs
-const LoadConfig = async () => {
-  // let template: any;
-  let cache: any;
-  // await window.go.main.App.LoadConfigTemplate().then((resp: any) => {
-  //   template = JSON.parse(resp.Data);
-  // });
-  await window.go.main.App.LoadConfigCache().then((resp: any) => {
-    cache = JSON.parse(resp.Data);
+const LoadConfig = () => {
+  window.go.main.App.LoadConfigCache().then((resp: any) => {
+    // 根据缓存生产 config 数据
+    configData = genConfig(JSON.parse(resp.Data))
+    // 根据模板生成菜单项
+    getMenu(configData);
+    // 生成树形表格
+    toTree(configData);
   });
-  // 同步缓存值到模板
-  setValue(cache, template);
-  // 根据模板生成菜单项
-  getMenu(template);
-  // 生成树形表格
-  toTree(template);
 };
 
 const SaveConfig = () => {
@@ -183,16 +247,18 @@ const SyncDataTable = () => {
 };
 
 // Data
-interface tree {
-  [index: string]: Node[];
-}
 interface Node {
   id: string;
   name: string;
   value: any;
+  type: string;
   children: Node[];
 }
-const treeData = ref({} as tree);
+const treeData = ref({}as {
+  [k:string]:{
+    [k:string]:any
+  }
+});
 const showing = ref();
 
 // Style
@@ -230,9 +296,12 @@ const options = [
 // 数据处理
 var gID = 0;
 function toTree(data: any) { //转换树形
-  for (let index in data) {
-    for (let i in data[index]) {
-      treeData.value[index + "-" + i] = subTree(data[index][i]);
+  for (let service in data) {
+    for (let mode in data[service]) {
+      if (!(service in treeData.value)) {
+        treeData.value[service] = {}
+      }
+      treeData.value[service][mode] = subTree(data[service][mode]);
     }
   }
 }
@@ -243,32 +312,41 @@ function subTree(data: any) {
       id: gID.toString(),
       name: index,
       value: "",
+      type: "",
       children: [],
     };
     gID++;
-    if (Array.isArray(data[index])) {
-      node.name = node.name + "#array";
-      let a = data[index];
-      node.value = a.toString();
-    } else if (data[index] instanceof Object) {
-      node.children = subTree(data[index]);
+    if (data[index] instanceof Object && !Array.isArray(data[index])) {// 1.判断是否嵌套结构体
+      if ("type" in data[index] && data[index].substring(0, 5) == "enum:") {    //判断是否为enums
+        node.type = data[index]["type"]
+        node.value = data[index]["value"]
+      } else {
+        node.children = subTree(data[index])
+      }
+    } else if (Array.isArray(data[index])) {  // 2.判断是否为数组
+      node.type = "slice"
+      node.value = data[index].toString()
+    } else if (typeof data[index] == "string" && data[index].substring(0, 6) == "#enum#") {     // 3.常规字段
+      node.type = "enum:" + data[index].substring(6)
+      node.value = null
     } else {
-      node.value = data[index];
+      node.value = data[index]
     }
-    nodes.push(node);
+    nodes.push(node)
   }
-  return nodes;
+  return nodes
 }
-function toData(data: tree) {  //还原数据
+
+function toData(data: any) {  //还原数据
   let configs = {};
-  for (let index in data) {
-    let service = index.substring(0, index.indexOf("-"));
-    let mode = index.substring(index.indexOf("-") + 1);
-    if (configs[service] != undefined) {
-      configs[service][mode] = subData(data[index]);
-    } else {
-      configs[service] = {};
-      configs[service][mode] = subData(data[index]);
+  for (let service in data) {
+    for (let mode in data) {
+      if (configs[service] != undefined) {
+        configs[service][mode] = subData(data[service][mode]);
+      } else {
+        configs[service] = {};
+        configs[service][mode] = subData(data[service][mode]);
+      }
     }
   }
   return configs;
@@ -277,8 +355,7 @@ function subData(data: Node[]) {
   let config: any = {};
   for (let i = 0; i < data.length; i++) {
     if (data[i].children.length == 0) {
-      if (data[i].name.split("#").length > 1) {
-        // 数组
+      if (data[i].type == "slice") {
         if (data[i].value == "") {
           config[data[i].name.split("#")[0]] = [];
         } else {
@@ -293,16 +370,31 @@ function subData(data: Node[]) {
   }
   return config;
 }
+
+/**
+ * @function 根据模板匹配缓存数据
+ */
 function setValue(src: any, dst: any) {
   for (let i in src) {
-    if (dst[i] != undefined) {
+    if (i in dst) {
+      // 1.判断是否为枚举
+      if (typeof dst[i] == "string" && dst[i].substring(0, 6) == "#enum#") {
+        dst[i] = {
+          value: src[i],
+          type: "enum:" + dst[i].substring(6)
+        }
+      }
+      // 2.判断是否为嵌套结构
       if (
         src[i] instanceof Object &&
         dst[i] instanceof Object &&
         !Array.isArray(src[i])
       ) {
         setValue(src[i], dst[i]);
-      } else if (typeof src[i] == typeof dst[i]) {
+        continue
+      }
+      // 3.判断常规字段类型是否相同
+      if (typeof src[i] == typeof dst[i]) {
         dst[i] = src[i];
       } else {
         console.log("mistake type: ", i);
@@ -312,9 +404,9 @@ function setValue(src: any, dst: any) {
 }
 
 // utils
-const handleSelect = (item: any) => {
-  let s = item.index;
-  showing.value = treeData.value[s];
+const handleSelect = (index:string, service:string, mode: string) => {
+  showDelete.value = index;
+  showing.value = treeData.value[service][mode];
 };
 const handleRes = (resp: string, successMsg: string) => {
   if (resp != "") {
@@ -384,5 +476,38 @@ function remove(dst: string[], key: string) {
 .menu {
   border: 0;
   height: 100%;
+}
+
+.add-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #a7d0fc;
+}
+
+.delete-buttom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10000;
+  color: white;
+  width: 20px;
+  height: 50px;
+  margin-left: auto;
+  background-color: rgba(128, 128, 128, 0.233);
+  transition: all 150ms linear;
+}
+
+.delete-buttom:hover {
+  color: white;
+  background-color: #e02c26;
+  transition: all 250ms linear;
+}
+
+.add-confirm-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>

@@ -13,20 +13,20 @@ message Database {
   Mysql mysql = 1;
   Redis redis = 2;
   Dynamo dynamo = 3;
+}
 
-  message Mysql {
-    string Host = 1;
-  }
-  message Redis {
-    string Host = 1;
-  }
-  message Dynamo {
-    string Host = 1;
-  }
+message Mysql {
+  string Host = 1;
+}
+message Redis {
+  string Host = 1;
+}
+message Dynamo {
+  string Host = 1;
 }
 
 message TaskHandler {
-
+  
 }
 
 message Etcd {

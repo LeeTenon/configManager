@@ -65,7 +65,7 @@ type Response struct {
 }
 
 func (a *App) LoadProto() *Response {
-    data1, err := os.ReadFile("./test.proto")
+    data1, err := os.ReadFile("./config.proto")
     data2, err := os.ReadFile("./types.proto")
     if err != nil {
         logx.Errorf("open file error: %s", err.Error())

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package config;
+
+import "types.proto";
+// 服务需统一命名规范: svcName_Config
+// 继承字段用 _ 命名
+message Assets_Config {
+  RpcServerConfig _ = 1;
+  string gameMode = 2;
+}
+
+message Challenge_Config {
+  RpcServerConfig _ = 1;
+  Level level = 2;
+}
+
