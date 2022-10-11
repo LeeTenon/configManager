@@ -1,13 +1,7 @@
+// 此文件及其余文件存放各种结构体
 syntax = "proto3";
 
 package config;
-
-message RpcServerConfig {
-  Etcd etcd = 1;
-  Database database = 2;
-  TaskHandler taskHandler = 3;
-  string mode = 10;
-}
 
 message Database {
   Mysql mysql = 1;
@@ -26,7 +20,7 @@ message Dynamo {
 }
 
 message TaskHandler {
-  
+  string samething = 1;
 }
 
 message Etcd {
@@ -42,4 +36,10 @@ enum Level {
   WARNING = 0;
   FATAL = 1;
   SEVERE = 2;
+}
+
+enum Mode {
+  dev = 0;
+  test = 1;
+  pro = 2;
 }

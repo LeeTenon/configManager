@@ -67,10 +67,11 @@ type Response struct {
 func (a *App) LoadProto() *Response {
     data1, err := os.ReadFile("./config.proto")
     data2, err := os.ReadFile("./types.proto")
+    data3, err := os.ReadFile("./common.proto")
     if err != nil {
         logx.Errorf("open file error: %s", err.Error())
     }
     return &Response{
-        Data: []string{string(data1), string(data2)},
+        Data: []string{string(data1), string(data2),string(data3)},
     }
 }

@@ -21,16 +21,22 @@
             <template #title>
               <h4>{{ service }}</h4>
             </template>
-            <el-menu-item v-for="(config, mode) in configs" :index="service + '-' + mode" @click="handleSelect(service + '-' + mode,service as string,mode as string)">
+            <el-menu-item v-for="(config, mode) in configs" :index="service + '-' + mode"
+              @click="handleSelect(service + '-' + mode,service as string,mode as string)">
               <div style="display: flex;width:calc(100% - 30px);">
                 <div>
                   {{ mode }}
                 </div>
-                <div v-if="showDelete == service + '-' + mode" class="delete-buttom" @click="deleteHandle">
-                  <el-icon style="margin-left: 5px;">
-                    <Close />
-                  </el-icon>
-                </div>
+                <el-popconfirm v-if="showDelete == service + '-' + mode" confirm-button-text="Yes"
+                  cancel-button-text="No" title="确认删除?" @confirm="confirmDelete(service,mode)" @cancel="cancelDelete">
+                  <template #reference>
+                    <div class="delete-buttom">
+                      <el-icon style="margin-left: 5px;">
+                        <Close />
+                      </el-icon>
+                    </div>
+                  </template>
+                </el-popconfirm>
               </div>
             </el-menu-item>
             <el-popover placement="right" :width="430" trigger="click" :visible="isVisible(service as string)"
@@ -71,13 +77,11 @@
           <el-table-column prop="value" label="值" style="width: 50%">
             <template #default="scope">
               <div v-if="scope.row.children.length == 0" style="display: flex; align-items: center">
-                <el-select v-if="scope.row.type.substring(0,5) == 'enum:'" class="m-2" placeholder="Select" size="small"
-                  clearable v-model="scope.row.value">
-                  <el-option v-for="(value,key) in enums[scope.row.type.substring(5)]" :key="value" :label="key"
-                    :value="key" />
+                <el-select v-if="scope.row.type == 'enum:'" class="m-2" placeholder="Select" size="small" clearable
+                  v-model="scope.row.value">
+                  <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
                 </el-select>
-                <el-input-number v-else-if="typeof scope.row.value == 'number'" v-model="scope.row.value"
-                  size="small" />
+                <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.value" size="small" />
                 <el-input v-else v-model="scope.row.value" size="small" />
               </div>
             </template>
@@ -101,10 +105,11 @@ import { ElNotification } from "element-plus";
 import { stringify } from "yaml";
 import { trimDefault } from "../function/tools"
 import { loadPB } from "../function/pb"
-import { Search, Close } from '@element-plus/icons-vue'
+import { Close } from '@element-plus/icons-vue'
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
-import { add } from "lodash";
+import { dataType } from "element-plus/lib/components/table-v2/src/common";
+import { isArray, isObject } from "lodash";
 const addTag = ref("")
 // Init
 onMounted(async () => {
@@ -115,8 +120,14 @@ onMounted(async () => {
 // 菜单UI
 const showDelete = ref("")
 const visible = ref("")
-function deleteHandle() {
-  console.log("删除")
+function deleteHandle(service: any, mode: any) {
+  delete treeData.value[service][mode]
+}
+function confirmDelete(service: any, mode: any) {
+  delete treeData.value[service][mode]
+}
+function cancelDelete() {
+
 }
 function addHandle(name: string) {
   visible.value = name
@@ -136,10 +147,13 @@ function addConfig(service: string) {
     if (service + "-" + "new_" + i in treeData.value) {
       continue
     }
-    treeData.value[service]["new_" + i] = subTree(configData[service][addTag.value]);
+    treeData.value[service]["new_" + i] = JSON.parse(JSON.stringify(treeData.value[service][addTag.value]));
     break
   }
 }
+
+// 通用配置区
+
 
 // Proto
 var configData = {}
@@ -177,19 +191,18 @@ function genConfigTemplate(data: any): any {
 }
 function genConfig(cache: any): any {
   let configs = {}
-  console.log("缓存： ", cache)
   for (let svc in template) {
-    if (cache != null && svc in cache[svc]) {
-      for (let mode in cache) {
-        configs[svc][mode] = setValue(cache[svc][mode], Object.assign({}, template[svc]))
+    configs[svc] = {}
+    if (cache != null && svc in cache) {
+      for (let mode in cache[svc]) {
+        let tmp = JSON.parse(JSON.stringify(template[svc]))
+        setValue(cache[svc][mode], tmp)
+        configs[svc][mode] = tmp
       }
     } else {
-      console.log("新服务: ", svc)
-      configs[svc] = {}
-      configs[svc]["template"] = Object.assign({}, template[svc])
+      configs[svc]["template"] = JSON.parse(JSON.stringify(template[svc]))
     }
   }
-  console.log(configs)
   return configs
 }
 
@@ -252,11 +265,12 @@ interface Node {
   name: string;
   value: any;
   type: string;
+  spec: string;
   children: Node[];
 }
-const treeData = ref({}as {
-  [k:string]:{
-    [k:string]:any
+const treeData = ref({} as {
+  [k: string]: {
+    [k: string]: any
   }
 });
 const showing = ref();
@@ -313,34 +327,35 @@ function subTree(data: any) {
       name: index,
       value: "",
       type: "",
+      spec: "",
       children: [],
     };
-    gID++;
-    if (data[index] instanceof Object && !Array.isArray(data[index])) {// 1.判断是否嵌套结构体
-      if ("type" in data[index] && data[index].substring(0, 5) == "enum:") {    //判断是否为enums
-        node.type = data[index]["type"]
-        node.value = data[index]["value"]
-      } else {
-        node.children = subTree(data[index])
+    gID++
+    if ("#type#" in data[index] && "#value#" in data[index]) {// 1.叶子节点
+      node.type = data[index]["#type#"]
+      switch (node.type) {
+        case "slice":
+          node.value = data[index]["#value#"].toString()
+          break;
+        case "enum":
+          node.value = data[index]["#value#"]
+          node.spec = data[index]["spec"]
+        default:
+          node.value = data[index]["#value#"]
+          break;
       }
-    } else if (Array.isArray(data[index])) {  // 2.判断是否为数组
-      node.type = "slice"
-      node.value = data[index].toString()
-    } else if (typeof data[index] == "string" && data[index].substring(0, 6) == "#enum#") {     // 3.常规字段
-      node.type = "enum:" + data[index].substring(6)
-      node.value = null
-    } else {
-      node.value = data[index]
+    } else {// 2.嵌套结构
+      node.children = subTree(data[index])
     }
     nodes.push(node)
   }
   return nodes
 }
 
-function toData(data: any) {  //还原数据
+function toData(data: any): any {  //还原数据
   let configs = {};
   for (let service in data) {
-    for (let mode in data) {
+    for (let mode in data[service]) {
       if (configs[service] != undefined) {
         configs[service][mode] = subData(data[service][mode]);
       } else {
@@ -351,20 +366,29 @@ function toData(data: any) {  //还原数据
   }
   return configs;
 }
-function subData(data: Node[]) {
+function subData(data: Node[]): any {
   let config: any = {};
   for (let i = 0; i < data.length; i++) {
     if (data[i].children.length == 0) {
-      if (data[i].type == "slice") {
+      if (data[i].type == "slice") {//1.数组
         if (data[i].value == "") {
-          config[data[i].name.split("#")[0]] = [];
-        } else {
-          config[data[i].name.split("#")[0]] = data[i].value.split(",");
+          config[data[i].name] = [];
+          continue
         }
-      } else {
+        let s = data[i].value.split(",");
+        if (data[i].spec == "number") {
+          let numArr = []
+          for (let i = 0; i < s.length; i++) {
+            numArr.push(parseInt(s[i]))
+          }
+          config[data[i].name] = numArr
+        } else {
+          config[data[i].name] = data[i].value.split(",");
+        }
+      } else {//2.基本类型
         config[data[i].name] = data[i].value;
       }
-    } else {
+    } else {//3.嵌套结构体
       config[data[i].name] = subData(data[i].children);
     }
   }
@@ -377,34 +401,21 @@ function subData(data: Node[]) {
 function setValue(src: any, dst: any) {
   for (let i in src) {
     if (i in dst) {
-      // 1.判断是否为枚举
-      if (typeof dst[i] == "string" && dst[i].substring(0, 6) == "#enum#") {
-        dst[i] = {
-          value: src[i],
-          type: "enum:" + dst[i].substring(6)
-        }
-      }
-      // 2.判断是否为嵌套结构
-      if (
-        src[i] instanceof Object &&
-        dst[i] instanceof Object &&
-        !Array.isArray(src[i])
-      ) {
+      // 1.判断是否为常规字段类型（叶子节点）
+      if ("#type#" in dst[i] && "#value#" in dst[i] && !(isObject(src[i]) && !isArray(src[i]))) {
+        dst[i]["#value#"] = src[i]
+        continue
+      } else if (isObject(src[i]) && isObject(dst[i])) {
         setValue(src[i], dst[i]);
         continue
       }
-      // 3.判断常规字段类型是否相同
-      if (typeof src[i] == typeof dst[i]) {
-        dst[i] = src[i];
-      } else {
-        console.log("mistake type: ", i);
-      }
+      console.log("失效类型：", i)
     }
   }
 }
 
 // utils
-const handleSelect = (index:string, service:string, mode: string) => {
+const handleSelect = (index: string, service: string, mode: string) => {
   showDelete.value = index;
   showing.value = treeData.value[service][mode];
 };
@@ -483,6 +494,11 @@ function remove(dst: string[], key: string) {
   align-items: center;
   justify-content: center;
   background-color: #a7d0fc;
+  cursor: pointer;
+}
+
+.add-line:hover {
+  background-color: #66abf5;
 }
 
 .delete-buttom {
