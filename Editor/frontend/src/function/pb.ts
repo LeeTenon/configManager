@@ -17,7 +17,7 @@ class PBTool {
     }
 
     resolveProto(src: any) {
-        let common={}
+        let common = {}
 
         let first = true
         for (let file in src) {
@@ -50,7 +50,7 @@ class PBTool {
         }
     }
 
-    private resolveCommon(common:any) {
+    private resolveCommon(common: any) {
         this.pbCommonObj = this.checkField(common)
     }
 
@@ -78,13 +78,13 @@ class PBTool {
             switch (src[field]["type"]) {
                 case "int64":
                     obj[field] = {
-                        "#value#": 0,
+                        "#value#": null,
                         "#type#": "number",
                     }
                     break;
                 case "string":
                     obj[field] = {
-                        "#value#": "",
+                        "#value#": null,
                         "#type#": "string",
                     }
                     break;
