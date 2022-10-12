@@ -6,7 +6,8 @@
           <el-select v-model="mode" class="select" placeholder="请选择导出模式" style="width: 150px; margin-right: 10px">
             <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
-          <el-button type="primary" @click="GenerateConfig()">生成配置</el-button>
+          <el-button v-if="mode == ''" type="primary" disabled>生成配置</el-button>
+          <el-button v-else type="primary" @click="GenerateConfig()">生成配置</el-button>
           <el-button type="primary" @click="SaveConfig()">保存配置</el-button>
           <el-button type="primary" @click="SyncDataTable()">同步数据表</el-button>
         </div>
@@ -39,7 +40,7 @@
                 </el-popconfirm>
               </div>
             </el-menu-item>
-            <el-popover placement="right" :width="430" trigger="click" :visible="isVisible(service as string)"
+            <el-popover placement="right" :width="300" trigger="click" :visible="isVisible(service as string)"
               @before-leave="hideHandle">
               <template #reference>
                 <div class="add-line" @click="addHandle(service as string)">
@@ -49,12 +50,19 @@
                 </div>
               </template>
               <div class="add-confirm-box">
-                复制模板：
-                <el-select placeholder="Select" clearable v-model="addTag">
-                  <el-option v-for="(config, mode) in configs" :key="mode" :label="mode" :value="mode" />
-                </el-select>
-                <div style="  margin-left: auto;">
-                  <el-button type="primary" @click="addConfig(service as string)">确定</el-button>
+                <el-form-item label="配置名：" label-width="100px">
+                  <el-input v-model="newConfigName" />
+                </el-form-item>
+                <el-form-item label="复制模板：" label-width="100px">
+                  <el-select placeholder="Select" clearable v-model="addTag">
+                    <el-option key="empty" label="空模板" value="empty" />
+                    <el-option v-for="(config, mode) in configs" :key="mode" :label="mode" :value="mode" />
+                  </el-select>
+                </el-form-item>
+                <div style=" align-self: center; ;">
+                  <el-button v-if="newConfigName == '' || addTag == ''" type="primary" disabled
+                    @click="addConfig(service,newConfigName)">确定</el-button>
+                  <el-button v-else type="primary" @click="addConfig(service,newConfigName)">确定</el-button>
                   <el-button type="primary" @click="cancelAdd">取消</el-button>
                 </div>
               </div>
@@ -77,7 +85,7 @@
           <el-table-column prop="value" label="值" style="width: 50%">
             <template #default="scope">
               <div v-if="scope.row.children.length == 0" style="display: flex; align-items: center">
-                <el-select v-if="scope.row.type == 'enum:'" class="m-2" placeholder="Select" size="small" clearable
+                <el-select v-if="scope.row.type == 'enum'" class="m-2" placeholder="Select" size="small" clearable
                   v-model="scope.row.value">
                   <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
                 </el-select>
@@ -106,56 +114,85 @@ import { stringify } from "yaml";
 import { trimDefault } from "../function/tools"
 import { loadPB } from "../function/pb"
 import { Close } from '@element-plus/icons-vue'
+import { isArray, isObject } from "lodash";
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
-import { dataType } from "element-plus/lib/components/table-v2/src/common";
-import { isArray, isObject } from "lodash";
-const addTag = ref("")
+
 // Init
 onMounted(async () => {
   await LoadPB()
   await LoadConfig();
 });
+function handleSelectCommon() {
+  showDelete.value = ''
+  showing.value = commonTree
+}
 
-// 菜单UI
-const showDelete = ref("")
-const visible = ref("")
-function deleteHandle(service: any, mode: any) {
-  delete treeData.value[service][mode]
+// #region Data
+interface Node {
+  id: string;
+  name: string;
+  value: any;
+  type: string;
+  spec: string;
+  children: Node[];
 }
-function confirmDelete(service: any, mode: any) {
-  delete treeData.value[service][mode]
-}
-function cancelDelete() {
-
-}
-function addHandle(name: string) {
-  visible.value = name
-}
-function cancelAdd() {
-  visible.value = ""
-}
-function isVisible(curNmae: string) {
-  return visible.value == curNmae
-}
-function hideHandle() {
-  addTag.value = ""
-}
-function addConfig(service: string) {
-  visible.value = ""
-  for (let i = 1; ; i++) {
-    if (service + "-" + "new_" + i in treeData.value) {
-      continue
-    }
-    treeData.value[service]["new_" + i] = JSON.parse(JSON.stringify(treeData.value[service][addTag.value]));
-    break
+const treeData = ref({} as {
+  [k: string]: {
+    [k: string]: any
   }
-}
+});
+const showing = ref();
+// #endregion
 
-// 通用配置区
+// #region APIs
+const LoadConfig = () => {
+  window.go.main.App.LoadConfigCache().then((resp: any) => {
+    // 根据缓存生产 config 数据
+    configData = genConfig(JSON.parse(resp.Data))
+    // 生成树形表格
+    toTree(configData);
+  });
+};
 
+const SaveConfig = () => {
+  window.go.main.App.SaveConfig(JSON.stringify(toData(treeData.value))).then(
+    (res: any) => {
+      handleRes(res, "保存成功");
+    }
+  );
+};
 
-// Proto
+const GenerateConfig = async () => {
+  let m = mode.value;
+  let data = toData(treeData.value);
+  let result = {};
+  for (let i in data) {
+    if (data[i][m] != undefined) {
+      trimDefault(data[i][m]);
+      result[i] = stringify(data[i][m]);
+    }
+  }
+  console.log(result)
+  SaveConfig()
+  ElNotification({
+    title: "Notice",
+    message: JSON.stringify(result),
+    type: "info",
+  })
+  await window.go.main.App.GenConfig(result).then((resp: any) =>
+    handleRes(resp, "配置文件导出成功")
+  );
+};
+
+const SyncDataTable = () => {
+  window.go.main.App.SyncCsv().then((resp: any) => handleRes(resp, "数据表同步成功"));
+};
+// #endregion
+
+// #region Proto
+var commonTree = {}
+var commonConfigTemplate = {}
 var configData = {}
 var template = {}
 var enums = ref()
@@ -164,6 +201,7 @@ const LoadPB = () => {
     let pb = loadPB(resp.Data)
     template = genConfigTemplate(pb.pbObj)
     enums.value = genEnums(pb.enums)
+    commonConfigTemplate = pb.pbCommonObj
   });
 }
 function genEnums(src: any) {
@@ -190,131 +228,57 @@ function genConfigTemplate(data: any): any {
   return config
 }
 function genConfig(cache: any): any {
+  // 生成common配置
+  let common = {}
+  if (cache != null && '_common_' in cache) {
+    for (let mode in cache['_common_']) {
+      let tmp = JSON.parse(JSON.stringify(commonConfigTemplate))
+      setValue(cache['_common_'], tmp)
+      common[mode] = tmp
+    }
+    delete cache['_common_']
+  }
+  // 生成服务配置
   let configs = {}
   for (let svc in template) {
     configs[svc] = {}
     if (cache != null && svc in cache) {
       for (let mode in cache[svc]) {
+        //加入导出mode列表
+        let isValid = false
+        for (let i = 0; i < options.value.length; i++) {
+          if (options.value[i]["label"] == mode) {
+            isValid = true
+            break
+          }
+        }
+        if (!isValid) {
+          options.value.push(
+            {
+              value: mode,
+              label: mode,
+            },
+          )
+        }
         let tmp = JSON.parse(JSON.stringify(template[svc]))
         setValue(cache[svc][mode], tmp)
+        console.log(commonConfigTemplate, tmp)
+        setCommon(commonConfigTemplate, tmp)
         configs[svc][mode] = tmp
       }
-    } else {
-      configs[svc]["template"] = JSON.parse(JSON.stringify(template[svc]))
     }
   }
+  configs['CommonConfig'] = common
   return configs
 }
+// #endregion
 
-// APIs
-const LoadConfig = () => {
-  window.go.main.App.LoadConfigCache().then((resp: any) => {
-    // 根据缓存生产 config 数据
-    configData = genConfig(JSON.parse(resp.Data))
-    // 根据模板生成菜单项
-    getMenu(configData);
-    // 生成树形表格
-    toTree(configData);
-  });
-};
-
-const SaveConfig = () => {
-  window.go.main.App.SaveConfig(JSON.stringify(toData(treeData.value))).then(
-    (res: any) => {
-      handleRes(res, "保存成功");
-    }
-  );
-};
-
-const GenerateConfig = async () => {
-  let m = mode.value;
-  if (m == "") {
-    return ElNotification({
-      title: "Notice",
-      message: "请选择导出模式",
-      type: "info",
-      duration: 1000,
-    });
-  }
-  let data = toData(treeData.value);
-  let result = {};
-  for (let i in data) {
-    if (data[i][m] != undefined) {
-      trimDefault(data[i][m]);
-      result[i] = stringify(data[i][m]);
-    }
-  }
-  SaveConfig()
-  ElNotification({
-    title: "Notice",
-    message: JSON.stringify(result),
-    type: "info",
-  })
-  await window.go.main.App.GenConfig(result).then((resp: any) =>
-    handleRes(resp, "配置文件导出成功")
-  );
-};
-
-const SyncDataTable = () => {
-  window.go.main.App.SyncCsv().then((resp: any) => handleRes(resp, "数据表同步成功"));
-};
-
-// Data
-interface Node {
-  id: string;
-  name: string;
-  value: any;
-  type: string;
-  spec: string;
-  children: Node[];
-}
-const treeData = ref({} as {
-  [k: string]: {
-    [k: string]: any
-  }
-});
-const showing = ref();
-
-// Style
-const height = ref();
-height.value = document.body.clientHeight - 110 + "px";
-window.onresize = () => {
-  height.value = document.body.clientHeight - 110 + "px";
-};
-
-// 导出模式
-const mode = ref("");
-const options = [
-  {
-    label: "Dev",
-    value: "dev",
-  },
-  {
-    label: "Dev-Debug",
-    value: "test",
-  },
-  {
-    label: "QA",
-    value: "qa",
-  },
-  {
-    label: "国内生产",
-    value: "pro-i",
-  },
-  {
-    label: "国外生产",
-    value: "pro-o",
-  },
-];
-
-// 数据处理
+// #region 数据处理
 var gID = 0;
 function toTree(data: any) { //转换树形
   for (let service in data) {
+    treeData.value[service] = {}
     for (let mode in data[service]) {
-      if (!(service in treeData.value)) {
-        treeData.value[service] = {}
-      }
       treeData.value[service][mode] = subTree(data[service][mode]);
     }
   }
@@ -402,7 +366,8 @@ function setValue(src: any, dst: any) {
   for (let i in src) {
     if (i in dst) {
       // 1.判断是否为常规字段类型（叶子节点）
-      if ("#type#" in dst[i] && "#value#" in dst[i] && !(isObject(src[i]) && !isArray(src[i]))) {
+      console.log(dst)
+      if ("#type#" in dst[i] && "#value#" in dst[i]) {
         dst[i]["#value#"] = src[i]
         continue
       } else if (isObject(src[i]) && isObject(dst[i])) {
@@ -414,7 +379,142 @@ function setValue(src: any, dst: any) {
   }
 }
 
-// utils
+/**
+ * @function 读取common配置
+ */
+function setCommon(common: any, dst: any) {
+  for (let i in common) {
+    if (i in dst) {
+      // 1.判断是否为常规字段类型（叶子节点）
+      if ("#type#" in dst[i] && "#value#" in dst[i]) {
+        if (isZero(dst[i]["#value#"])) {
+          dst[i]["#value#"] = common[i]
+        }
+        continue
+      } else if (isObject(common[i]) && isObject(dst[i])) {
+        setCommon(common[i], dst[i]);
+        continue
+      }
+      console.log("失效类型：", i)
+    }
+  }
+}
+/**
+ * @function 剔除common配置
+ */
+function trimCommon(common: any, dst: any) {
+  for (let i in common) {
+    if (i in dst) {
+      // 1.判断是否为常规字段类型（叶子节点）
+      if ("#type#" in dst[i] && "#value#" in dst[i] && !(isObject(common[i]) && !isArray(common[i]))) {
+        if (dst[i]["#type#"] == 'slice') {
+          if (dst[i]["#value#"].toString() == dst[i].toString()) {
+            dst[i]["#value#"] = []
+          }
+        } else {
+          if (dst[i]["#value#"] == common[i]) {
+            dst[i]["#value#"] = null
+          }
+        }
+        continue
+      } else if (isObject(common[i]) && isObject(dst[i])) {
+        trimCommon(common[i], dst[i]);
+        continue
+      }
+      console.log("失效类型：", i)
+    }
+  }
+}
+function isZero(val: any) {
+  return (val == 0 || val == '' || val == null || val == undefined || (isArray(val) && val.length == 0))
+}
+// #endregion
+
+// #region 菜单UI
+const addTag = ref("")
+const showDelete = ref("")
+const visible = ref("")
+const newConfigName = ref("")
+function deleteHandle(service: any, mode: any) {
+  delete treeData.value[service][mode]
+}
+function confirmDelete(service: any, mode: any) {
+  delete treeData.value[service][mode]
+}
+function cancelDelete() {
+
+}
+function addHandle(name: string) {
+  newConfigName.value = ""
+  visible.value = name
+}
+function cancelAdd() {
+  visible.value = ""
+}
+function isVisible(curNmae: string) {
+  return visible.value == curNmae
+}
+function hideHandle() {
+  addTag.value = ""
+}
+function addConfig(service: any, name: any) {
+  visible.value = ""
+  if (name == "empty") {
+    return ElNotification({
+      title: "Error",
+      message: "empty 为保留字",
+      type: "error",
+      duration: 1000,
+    });
+  }
+  if (name in treeData.value[service]) {
+    return ElNotification({
+      title: "Error",
+      message: "配置文件命名重复",
+      type: "error",
+      duration: 1000,
+    });
+  }
+
+  if (addTag.value == "empty") {
+    console.log(service)
+    if (service == 'CommonConfig') {
+      treeData.value[service][name] = subTree(commonConfigTemplate)
+    } else {
+      treeData.value[service][name] = subTree(template[service])
+    }
+  } else {
+    treeData.value[service][name] = JSON.parse(JSON.stringify(treeData.value[service][addTag.value]));
+  }
+  //加入导出mode列表
+  let isValid = false
+  for (let i = 0; i < options.value.length; i++) {
+    if (options.value[i]["label"] == name) {
+      isValid = true
+      break
+    }
+  }
+  if (!isValid) {
+    options.value.push(
+      {
+        value: name,
+        label: name,
+      },
+    )
+  }
+}
+// #endregion
+
+// #region 导出模式
+interface ModeOption {
+  label: string
+  value: string
+}
+const mode = ref("");
+const options = ref([] as ModeOption[])
+// #endregion
+
+// #region utils
 const handleSelect = (index: string, service: string, mode: string) => {
   showDelete.value = index;
   showing.value = treeData.value[service][mode];
@@ -436,22 +536,16 @@ const handleRes = (resp: string, successMsg: string) => {
     });
   }
 };
+// #endregion
 
-// 菜单
-interface menu {
-  [key: string]: string[];
-}
-const menu = ref({} as menu);
-function getMenu(data: any) {
-  for (let key in data) {
-    menu.value[key] = new Array<string>();
-    for (let mode in data[key]) {
-      menu.value[key].push(mode);
-    }
-  }
-}
+// #region Style
+const height = ref();
+height.value = document.body.clientHeight - 110 + "px";
+window.onresize = () => {
+  height.value = document.body.clientHeight - 110 + "px";
+};
 
-// Style
+
 const expendedRow = ref([] as string[]);
 const handleExpend = (row: any, isExpend: boolean) => {
   if (isExpend) {
@@ -466,6 +560,7 @@ function remove(dst: string[], key: string) {
     dst.splice(index, 1);
   }
 }
+// #endregion
 </script>
 
 <style scoped>
@@ -523,7 +618,7 @@ function remove(dst: string[], key: string) {
 
 .add-confirm-box {
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-items: center;
 }
 </style>

@@ -1,7 +1,6 @@
 package configManager
 
 import (
-    "context"
     "io"
     "io/ioutil"
     "myproject/common/logx"
@@ -10,20 +9,6 @@ import (
     "sync"
 
     "gopkg.in/yaml.v2"
-)
-
-const (
-    //configTemplatePath = "NBServer/tools/configManager/template.json"
-    //configCachePath    = "NBServer/tools/configManager/cache.json"
-    csvSource  = "Programs/ClientData/CSVData/"
-    jsonSource = "Programs/ClientData/JsonData/"
-    csvDir     = "NBServer/data/CSVData/"
-    jsonDir    = "NBServer/data/JsonData/"
-    syncConfig = "NBServer/tools/configManager/sync.yaml"
-    configDir  = "NBServer/config/"
-
-    configTemplatePath = "../template.json"
-    configCachePath    = "../cache.json"
 )
 
 type ConfigManager struct {
@@ -37,7 +22,7 @@ func NewConfigManager() *ConfigManager {
     }
 }
 
-func (c *ConfigManager) LoadTemplate(ctx context.Context) (string, error) {
+func (c *ConfigManager) LoadTemplate() (string, error) {
     data, err := os.ReadFile(configTemplatePath)
     if err != nil {
         logx.Errorf("open file error: %s", err.Error())
@@ -48,7 +33,7 @@ func (c *ConfigManager) LoadTemplate(ctx context.Context) (string, error) {
     return string(data), nil
 }
 
-func (c *ConfigManager) LoadCache(ctx context.Context) (string, error) {
+func (c *ConfigManager) LoadCache() (string, error) {
     data, err := os.ReadFile(configCachePath)
     if err != nil {
         logx.Errorf("open file error: %s", err.Error())
@@ -59,7 +44,7 @@ func (c *ConfigManager) LoadCache(ctx context.Context) (string, error) {
     return string(data), nil
 }
 
-func (c *ConfigManager) Save(ctx context.Context, dataJson string) error {
+func (c *ConfigManager) Save(dataJson string) error {
     err := writeFile("", configCachePath, []byte(dataJson))
     if err != nil {
         logx.Errorf("save config error: %s", err.Error())
@@ -89,7 +74,7 @@ type table struct {
     Json []string `yaml:"json"`
 }
 
-func (c *ConfigManager) SyncCsv(ctx context.Context) error {
+func (c *ConfigManager) SyncCsv() error {
     // 读取需要读取的表
     data, err := ioutil.ReadFile(syncConfig)
     if err != nil {

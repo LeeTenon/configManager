@@ -5,10 +5,6 @@ package config;
 
 import "types.proto";
 
-message RpcServerConfig {
-  Etcd etcd = 1;
-  Database database = 2;
-  TaskHandler taskHandler = 3;
-  int64 times=4;
-  Mode mode = 10;
+message _Common {
+  RpcServerConfig _ = 1;
 }

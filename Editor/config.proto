@@ -8,6 +8,7 @@ syntax = "proto3";
 package config;
 
 import "common.proto";
+import "types.proto";
 
 message Assets_Config {
   RpcServerConfig _ = 1;

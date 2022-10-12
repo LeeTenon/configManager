@@ -1,0 +1,9 @@
+etcd:
+  Host:
+    - "123"
+    - "234"
+  key: rpc.test
+database:
+  mysql:
+    Host: qwedhqiweh
+mode: dev

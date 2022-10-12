@@ -4,6 +4,7 @@ class PBTool {
     pbRef: pb.Namespace
     pbOriObj: any
     pbObj: any
+    pbCommonObj: any
     enums: {
         [k: string]: any
     }
@@ -11,29 +12,46 @@ class PBTool {
         this.pbRef = {} as pb.Namespace
         this.pbOriObj = {}
         this.pbObj = {}
+        this.pbCommonObj = {}
         this.enums = {}
     }
 
-    resolveProto(src: string[]) {
-        this.pbRef = pb.parse(src[0]).root
-        for (let i = 1; i < src.length; i++) {
-            this.pbRef = this.pbRef.addJSON(pb.parse(src[i]).root.toJSON().nested!)
+    resolveProto(src: any) {
+        let common={}
+
+        let first = true
+        for (let file in src) {
+            if (file == 'common') {
+                let tmp = pb.parse(src[file]).root.toJSON()
+                common = tmp.nested![Object.keys(tmp.nested!)[0]]['nested']['_Common']['fields']
+                continue
+            }
+            if (first) {
+                this.pbRef = pb.parse(src[file]).root
+                first = false
+            } else {
+                this.pbRef = this.pbRef.addJSON(pb.parse(src[file]).root.toJSON().nested!)
+            }
         }
 
         let pbObject = this.pbRef.toJSON()
         this.pbOriObj = pbObject.nested![Object.keys(pbObject.nested!)[0]]["nested"]
-
         this.resolve()
+        this.resolveCommon(common)
     }
 
     private resolve() {
         for (let field in this.pbOriObj) {
-            if (this.pbOriObj[field]["fields"] == undefined) {
-                this.enums[field] = this.pbOriObj[field]["values"]
-            } else {
+            if ('fields' in this.pbOriObj[field]) {
                 this.pbObj[field] = this.checkField(this.pbOriObj[field]["fields"])
+            } else {
+                this.enums[field] = this.pbOriObj[field]["values"]
             }
         }
+    }
+
+    private resolveCommon(common:any) {
+        this.pbCommonObj = this.checkField(common)
     }
 
     private checkField(src: any): any {
@@ -85,41 +103,6 @@ class PBTool {
         return obj
     }
 
-    // private checkField(src: any): any {
-    //     let obj = {}
-    //     for (let field in src) {
-    //         //数组
-    //         if (src[field]["rule"] == "repeated") {
-    //             if (src[field]["type"] == "string") {
-    //                 obj[field] = ["#string#"]
-    //             } else {
-    //                 obj[field] = ["#number#"]
-    //             }
-    //             continue
-    //         }
-    //         //非数组
-    //         switch (src[field]["type"]) {
-    //             case "int":
-    //                 obj[field] = 0
-    //                 break;
-    //             case "string":
-    //                 obj[field] = ""
-    //                 break;
-    //             default:
-    //                 let h = this.findType(src[field]["type"])
-    //                 if (field == "_") {  //继承字段
-    //                     for (let i in h) {
-    //                         obj[i] = h[i]
-    //                     }
-    //                 } else {
-    //                     obj[field] = h
-    //                 }
-    //                 break;
-    //         }
-    //     }
-    //     return obj
-    // }
-
     private findType(tName: string): any {
         if (!(tName in this.pbOriObj)) { //说明不是顶级域定义的结构，为内嵌定义
             console.log("内嵌结构:", tName)
@@ -131,7 +114,7 @@ class PBTool {
                 return this.checkField(this.pbOriObj[tName]["fields"])
             }
             return {
-                "#value#": 0,
+                "#value#": null,
                 "#type#": "enum",
                 "spec": tName
             }

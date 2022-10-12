@@ -23,7 +23,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) LoadConfigTemplate() *Response {
-    data, err := a.configMgr.LoadTemplate(a.ctx)
+    data, err := a.configMgr.LoadTemplate()
     if err != nil {
         return &Response{Error: err.Error()}
     }
@@ -31,7 +31,7 @@ func (a *App) LoadConfigTemplate() *Response {
 }
 
 func (a *App) LoadConfigCache() *Response {
-    data, err := a.configMgr.LoadCache(a.ctx)
+    data, err := a.configMgr.LoadCache()
     if err != nil {
         return &Response{Error: err.Error()}
     }
@@ -39,7 +39,7 @@ func (a *App) LoadConfigCache() *Response {
 }
 
 func (a *App) SaveConfig(in string) *Response {
-    if err := a.configMgr.Save(a.ctx, in); err != nil {
+    if err := a.configMgr.Save(in); err != nil {
         return &Response{Error: err.Error()}
     }
     return &Response{}
@@ -53,7 +53,7 @@ func (a *App) GenConfig(in map[string]string) *Response {
 }
 
 func (a *App) SyncCsv() *Response {
-    if err := a.configMgr.SyncCsv(a.ctx); err != nil {
+    if err := a.configMgr.SyncCsv(); err != nil {
         return &Response{Error: err.Error()}
     }
     return &Response{}
@@ -72,6 +72,10 @@ func (a *App) LoadProto() *Response {
         logx.Errorf("open file error: %s", err.Error())
     }
     return &Response{
-        Data: []string{string(data1), string(data2),string(data3)},
+        Data: map[string]string{
+            "config": string(data1),
+            "types":  string(data2),
+            "common": string(data3),
+        },
     }
 }

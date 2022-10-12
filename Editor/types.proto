@@ -3,6 +3,14 @@ syntax = "proto3";
 
 package config;
 
+message RpcServerConfig {
+  Etcd etcd = 1;
+  Database database = 2;
+  TaskHandler taskHandler = 3;
+  int64 times=4;
+  Mode mode = 10;
+}
+
 message Database {
   Mysql mysql = 1;
   Redis redis = 2;
