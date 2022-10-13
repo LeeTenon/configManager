@@ -2,6 +2,9 @@ package main
 
 import (
     "context"
+    "encoding/json"
+    "io"
+    "io/ioutil"
     "myproject/common/logx"
     configManager "myproject/configManage"
     "os"
@@ -12,18 +15,38 @@ type App struct {
     configMgr *configManager.ConfigManager
 }
 
+type appConfig struct {
+    configManager.ConfigManager
+}
+
 func NewApp() *App {
-    return &App{
-        configMgr: configManager.NewConfigManager(),
-    }
+    return &App{}
 }
 
 func (a *App) startup(ctx context.Context) {
     logx.InitLogger(ctx)
+
+    conf := &appConfig{}
+    data, err := ioutil.ReadFile(AppConfigPath)
+    if err != nil {
+        if os.IsNotExist(err) { // 生成配置文件模板
+            tmp, _ := json.MarshalIndent(conf, "", "\t")
+            f, _ := os.Create(AppConfigPath)
+            _, _ = io.WriteString(f, string(tmp))
+        }
+
+    } else {
+        err = json.Unmarshal(data, conf)
+        if err != nil {
+
+        }
+    }
+
+    a.configMgr = configManager.NewConfigManager(&conf.ConfigManager)
 }
 
-func (a *App) LoadConfigTemplate() *Response {
-    data, err := a.configMgr.LoadTemplate()
+func (a *App) LoadProto() *Response {
+    data, err := a.configMgr.LoadProto()
     if err != nil {
         return &Response{Error: err.Error()}
     }
@@ -62,20 +85,4 @@ func (a *App) SyncCsv() *Response {
 type Response struct {
     Error string
     Data  interface{}
-}
-
-func (a *App) LoadProto() *Response {
-    data1, err := os.ReadFile("./config.proto")
-    data2, err := os.ReadFile("./types.proto")
-    data3, err := os.ReadFile("./common.proto")
-    if err != nil {
-        logx.Errorf("open file error: %s", err.Error())
-    }
-    return &Response{
-        Data: map[string]string{
-            "config": string(data1),
-            "types":  string(data2),
-            "common": string(data3),
-        },
-    }
 }

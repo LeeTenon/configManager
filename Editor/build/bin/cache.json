@@ -1,0 +1,99 @@
+{
+  "assets": {
+    "QA": [
+      {
+        "id": ".etcd",
+        "name": "etcd",
+        "children": [
+          {
+            "id": ".etcd.Host",
+            "name": "Host",
+            "force": false,
+            "type": "slice"
+          },
+          {
+            "id": ".etcd.key",
+            "name": "key",
+            "force": false,
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": ".database",
+        "name": "database",
+        "children": [
+          {
+            "id": ".database.mysql",
+            "name": "mysql",
+            "children": [
+              {
+                "id": ".database.mysql.Host",
+                "name": "Host",
+                "force": false,
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "id": ".database.redis",
+            "name": "redis",
+            "children": [
+              {
+                "id": ".database.redis.Host",
+                "name": "Host",
+                "force": false,
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "id": ".database.dynamo",
+            "name": "dynamo",
+            "children": [
+              {
+                "id": ".database.dynamo.Host",
+                "name": "Host",
+                "force": false,
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": ".taskHandler",
+        "name": "taskHandler",
+        "children": [
+          {
+            "id": ".taskHandler.samething",
+            "name": "samething",
+            "force": false,
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": ".times",
+        "name": "times",
+        "force": false,
+        "type": "number"
+      },
+      {
+        "id": ".mode",
+        "name": "mode",
+        "force": false,
+        "type": "enum",
+        "spec": "Mode"
+      },
+      {
+        "id": ".gameMode",
+        "name": "gameMode",
+        "force": false,
+        "type": "string"
+      }
+    ]
+  },
+  "challenge": {},
+  "CommonConfig": {}
+}

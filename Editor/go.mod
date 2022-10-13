@@ -2,10 +2,7 @@ module myproject
 
 go 1.18
 
-require (
-	github.com/wailsapp/wails/v2 v2.0.0
-	gopkg.in/yaml.v2 v2.3.0
-)
+require github.com/wailsapp/wails/v2 v2.0.0
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect

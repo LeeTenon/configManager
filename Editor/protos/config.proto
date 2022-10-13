@@ -1,0 +1,25 @@
+// 此文件存放各服务配置文件
+//---------注意事项----------
+// 服务需统一命名规范: svcName_Config
+// 继承字段用 _ 开头
+//---------注意事项----------
+syntax = "proto3";
+
+package config;
+
+import "common.proto";
+import "types.proto";
+
+message Assets_Config {
+  message SpecConfig {
+    string timeout = 1;
+  }
+  RpcServerConfig _ = 1;
+  SpecConfig Spec = 2;
+}
+
+message Challenge_Config {
+  RpcServerConfig _ = 1;
+  Level level = 2;
+}
+

@@ -1,0 +1,8 @@
+{
+	"OutputPath": "configs",
+	"CachePath": "cache.json",
+	"ProtoPath": "protos",
+	"SyncList": null,
+	"SyncSource": null,
+	"SyncTarget": null
+}

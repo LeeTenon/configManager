@@ -6,9 +6,9 @@
           <el-select v-model="mode" class="select" placeholder="请选择导出模式" style="width: 150px; margin-right: 10px">
             <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
-          <el-button v-if="mode == ''" type="primary" disabled>生成配置</el-button>
-          <el-button v-else type="primary" @click="GenerateConfig()">生成配置</el-button>
-          <el-button type="primary" @click="SaveConfig()">保存配置</el-button>
+          <el-button v-if="mode == ''" type="primary" disabled>保持并生成配置文件</el-button>
+          <el-button v-else type="primary" @click="SaveConfig()">保持并生成配置文件</el-button>
+          <!-- <el-button type="primary" @click="SaveConfig()">保存配置</el-button> -->
           <el-button type="primary" @click="SyncDataTable()">同步数据表</el-button>
         </div>
         <Toolbar />
@@ -85,13 +85,30 @@
           </el-table-column>
           <el-table-column prop="value" label="值" style="width: 50%">
             <template #default="scope">
-              <div v-if="scope.row.children.length == 0" style="display: flex; align-items: center">
-                <el-select v-if="scope.row.type == 'enum'" class="m-2" placeholder="Select" size="small" clearable
-                  v-model="scope.row.value">
-                  <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
-                </el-select>
-                <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.value" size="small" />
-                <el-input v-else v-model="scope.row.value" size="small" />
+              <div v-if="isNil(scope.row.children)" style="display: flex; align-items: center">
+                <div v-if="isNil(scope.row.common) || scope.row.force" class="value-box">
+                  <el-select v-if="scope.row.type == 'enum'" class="common-value-input" placeholder="Select"
+                    size="small" clearable v-model="scope.row.value">
+                    <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
+                  </el-select>
+                  <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.value" size="small"
+                    class="common-value-input" />
+                  <el-input v-else v-model="scope.row.value" size="small" class="common-value-input" />
+                  <el-button v-if="!isUndefined(scope.row.common)" @click="scope.row.force = !scope.row.force"
+                    size="small" style="margin-left: 15px;">
+                    使用通用配置</el-button>
+                </div>
+                <div v-else class="value-box">
+                  <el-select v-if="scope.row.type == 'enum'" class="common-value-input" placeholder="Select"
+                    size="small" clearable v-model="scope.row.common.value" disabled>
+                    <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
+                  </el-select>
+                  <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.common.value" size="small"
+                    disabled class="common-value-input" />
+                  <el-input v-else v-model="scope.row.common.value" size="small" disabled />
+                  <el-button @click="scope.row.force = !scope.row.force" size="small" style="margin-left: 15px;">修改
+                  </el-button>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -115,9 +132,12 @@ import { stringify } from "yaml";
 import { trimDefault } from "../function/tools"
 import { loadPB } from "../function/pb"
 import { Close } from '@element-plus/icons-vue'
-import { isArray, isObject } from "lodash";
+import { isArray, isUndefined } from "lodash";
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
+import { isEmpty } from "element-plus/es/utils";
+
+const commonConfig = 'CommonConfig'
 
 // Init
 onMounted(async () => {
@@ -126,17 +146,24 @@ onMounted(async () => {
 });
 
 // #region Data
-interface Node {
+class TreeNode {
   id: string;
   name: string;
   value: any;
   type: string;
   spec: string;
-  children: Node[];
+  common: TreeNode | undefined
+  force: boolean
+  children: TreeNode[];
+  constructor(id: string, name: string) {
+    this.id = id
+    this.name = name
+  }
 }
+
 interface Tree {
   [k: string]: {
-    [k: string]: Node[]
+    [k: string]: TreeNode[]
   }
 }
 const treeData = ref({} as Tree)
@@ -146,60 +173,57 @@ const showing = ref();
 // #region APIs
 const LoadConfig = () => {
   window.go.main.App.LoadConfigCache().then((resp: any) => {
-    // 根据缓存生产 config 数据
-    configData = genConfig(JSON.parse(resp.Data))
-    // 生成树形表格
-    treeData.value = toTree(configData);
+    // 读取缓存树
+    treeData.value = loadCacheTree(JSON.parse(resp.Data))
   });
 };
-
-const SaveConfig = () => {
-  window.go.main.App.SaveConfig(JSON.stringify(toData(treeData.value))).then(
-    (res: any) => {
-      handleRes(res, "保存成功");
+// 保存
+const SaveConfig = async () => {
+  let data = JSON.parse(JSON.stringify(treeData.value)) as Tree
+  trimAllCommon(data)
+  await window.go.main.App.SaveConfig(JSON.stringify(data, null, 2)).then((resp) => {
+    if (resp.Error != '') {
+      showError(resp.Error)
     }
-  );
-};
-
-const GenerateConfig = async () => {
-  let m = mode.value;
-  let data = toData(treeData.value);
-  let result = {};
-  for (let i in data) {
-    if (data[i][m] != undefined) {
-      trimDefault(data[i][m]);
-      result[i] = stringify(data[i][m]);
-    }
-  }
-  SaveConfig()
-  ElNotification({
-    title: "Notice",
-    message: JSON.stringify(result),
-    type: "info",
   })
-  await window.go.main.App.GenConfig(result).then((resp: any) =>
-    handleRes(resp, "配置文件导出成功")
-  );
-};
-
+  // 生成配置文件
+  let yamlData = genYaml(mode.value);
+  await window.go.main.App.GenConfig(yamlData).then((resp: any) => {
+    if (resp.Error != '') {
+      showError(resp.Error)
+    } else {
+      showSuccess('保存并生成配置文件成功')
+    }
+  })
+}
 const SyncDataTable = () => {
-  window.go.main.App.SyncCsv().then((resp: any) => handleRes(resp, "数据表同步成功"));
-};
+
+}
 // #endregion
 
-// #region Proto
-var commonConfigTemplate = {}
-var configData = {}
-var template = {}
+// #region Proto->Data
+var serviceTreeTemplate = {}
+var commonTreeTemplate = {}
 var enums = ref()
+
 const LoadPB = () => {
   window.go.main.App.LoadProto().then((resp: any) => {
     let pb = loadPB(resp.Data)
-    template = genConfigTemplate(pb.pbObj)
+    serviceTreeTemplate = genTreeTemplate(genConfigTemplate(pb.pbObj))
+    commonTreeTemplate = objToTree(pb.pbCommonObj)
+    serviceTreeTemplate[commonConfig] = commonTreeTemplate
     enums.value = genEnums(pb.enums)
-    commonConfigTemplate = pb.pbCommonObj
   });
 }
+
+function genTreeTemplate(objTemplate: any): { [k: string]: TreeNode[] } {
+  let template = {}
+  for (let service in objTemplate) {
+    template[service] = objToTree(objTemplate[service])
+  }
+  return template
+}
+
 function genEnums(src: any) {
   let set = {}
   for (let kind in src) {
@@ -214,6 +238,7 @@ function genEnums(src: any) {
   }
   return set
 }
+
 function genConfigTemplate(data: any): any {
   let config = {}
   for (let field in data) {
@@ -223,25 +248,18 @@ function genConfigTemplate(data: any): any {
   }
   return config
 }
-var commonConfig = {}
-var oldCommonConfig = {}
-function genConfig(cache: any): any {
-  // 生成common配置
-  if (cache != null && 'CommonConfig' in cache) {
-    for (let mode in cache['CommonConfig']) {
-      let tmp = JSON.parse(JSON.stringify(commonConfigTemplate))
-      setValue(cache['CommonConfig'][mode], tmp)
-      commonConfig[mode] = tmp
-    }
-    oldCommonConfig = JSON.parse(JSON.stringify(commonConfig))
-    delete cache['CommonConfig']
-  }
-  // 生成服务配置
-  let configs = {}
-  for (let svc in template) {
-    configs[svc] = {}
-    if (cache != null && svc in cache) {
-      for (let mode in cache[svc]) {
+// #endregion
+
+// #region 数据处理
+function loadCacheTree(cache: Tree): Tree {
+  let tree = {}
+  for (let service in serviceTreeTemplate) {
+    tree[service] = {}
+    if (!isNil(cache) && service in cache) {
+      for (let mode in cache[service]) {
+        let data = JSON.parse(JSON.stringify(serviceTreeTemplate[service])) as TreeNode[]
+        setValue(cache[service][mode], data)
+        tree[service][mode] = data
         //加入导出mode列表
         let isValid = false
         for (let i = 0; i < options.value.length; i++) {
@@ -258,26 +276,108 @@ function genConfig(cache: any): any {
             },
           )
         }
-        let tmp = JSON.parse(JSON.stringify(template[svc]))
-        setValue(cache[svc][mode], tmp)
-        setCommon(tmp, mode)
-        configs[svc][mode] = tmp
       }
     }
   }
-  configs['CommonConfig'] = commonConfig
-  return configs
-}
-
-function updateCommon(mode: string) {
-  let common = treeData.value['CommonConfig'][mode]
-  for (let service in treeData.value) {
-    if (mode in treeData.value[service]) {
-      doUpdate(common, treeData.value[service][mode])
+  // 绑定common数据
+  if (commonConfig in tree) {
+    for (let m in tree[commonConfig]) {
+      for (let s in tree) {
+        if (s != commonConfig && m in tree[s]) {
+          setCommon(tree[commonConfig][m], tree[s][m])
+        }
+      }
     }
   }
+  return tree
 }
-function doUpdate(src: Node[], dst: Node[]) {
+
+function genYaml(mode: string): { [k: string]: string } {  //还原数据
+  let configs = {};
+  for (let service in treeData.value) {
+    if (service != commonConfig) {
+      if (mode in treeData.value[service]) {
+        configs[service] = stringify(treeToObj(treeData.value[service][mode]))
+        if (configs[service] == undefined) {
+          configs[service] = ''
+        }
+      }
+    }
+  }
+  return configs;
+}
+
+function objToTree(data: any): TreeNode[] {
+  return DoObjToTree(data, '')
+}
+function DoObjToTree(data: any, parentStr: string): TreeNode[] {
+  let nodes = new Array<TreeNode>();
+  for (let field in data) {
+    let id = parentStr + '.' + field
+    const node = new TreeNode(id, field);
+    if ("#type#" in data[field] && "#value#" in data[field]) {// 1.叶子节点
+      node.force = false
+      node.type = data[field]["#type#"]
+      switch (node.type) {
+        case "enum":
+          node.value = data[field]["#value#"]
+          node.spec = data[field]["spec"]
+        default:
+          node.value = data[field]["#value#"]
+          break;
+      }
+    } else {// 2.嵌套结构
+      node.children = DoObjToTree(data[field], id)
+    }
+    nodes.push(node)
+  }
+  return nodes
+}
+function treeToObj(data: TreeNode[]): any {
+  let config = {};
+  for (let i = 0; i < data.length; i++) {
+    let node = data[i]
+    let value: any
+    if (isNil(node.children)) { //  叶子节点
+      if (node.force) { //使用common配置
+        value = node.common!.value
+      } else {
+        value = node.value
+      }
+      if (!isZero(value)) {
+        if (node.type == "slice") {//1.数组        
+          let s = value.split(",");
+          if (node.spec == "number") {
+            let numArr = new Array<number>
+            for (let i = 0; i < s.length; i++) {
+              numArr.push(parseInt(s[i]))
+            }
+            config[node.name] = numArr
+          } else {
+            config[node.name] = value.split(",");
+          }
+        } else {//2.基本类型
+          config[data[i].name] = value;
+        }
+      }
+    } else {//3.嵌套结构体
+      let sub = treeToObj(data[i].children)
+      if (!isNil(sub)) {
+        config[data[i].name] = sub
+      }
+    }
+  }
+
+  if (Object.keys(config).length == 0) {
+    return
+  }
+  return config;
+}
+
+/**
+ * @function 根据模板匹配缓存树数据
+ */
+function setValue(src: TreeNode[], dst: TreeNode[]) {
   for (let i = 0; i < src.length; i++) {
     let field = dst.find((item) => {
       return item.id == src[i].id
@@ -285,169 +385,50 @@ function doUpdate(src: Node[], dst: Node[]) {
     if (field == undefined) {
       return
     }
-    if (field.children.length > 0) {  //嵌套结构体
-      doUpdate(src[i].children, field.children)
-    } else {  //叶子节点
+    if (!isNil(src[i].children)) {  //嵌套结构体
+      setValue(src[i].children, field.children)
+    } else if (isNodeEuql(field, src[i])) {  //叶子节点
       field.value = src[i].value
-    }
-  }
-}
-// #endregion
-
-// #region 数据处理
-function toTree(data: any): any { //转换树形
-  let tree = {}
-  for (let service in data) {
-    tree[service] = {}
-    for (let mode in data[service]) {
-      tree[service][mode] = objToTree(data[service][mode]);
-    }
-  }
-  return tree
-}
-function toData(data: any): any {  //还原数据
-  let configs = {};
-  for (let service in data) {
-    configs[service] = {};
-    for (let mode in data[service]) {
-      configs[service][mode] = treeToObj(data[service][mode]);
-    }
-  }
-  // 通过独立性标识来判断是否为通用模式--Node加入新字段！
-  return configs;
-}
-
-function objToTree(data: any): Node[] {
-  return DoObjToTree(data, '')
-}
-function DoObjToTree(data: any, parentStr: string): Node[] {
-  let nodes = new Array<Node>();
-  for (let index in data) {
-    let id = parentStr + '.' + index
-    const node: Node = {
-      id: id,
-      name: index,
-      value: "",
-      type: "",
-      spec: "",
-      children: [],
-    };
-    if ("#type#" in data[index] && "#value#" in data[index]) {// 1.叶子节点
-      node.type = data[index]["#type#"]
-      switch (node.type) {
-        case "slice":
-          node.value = data[index]["#value#"].toString()
-          break;
-        case "enum":
-          node.value = data[index]["#value#"]
-          node.spec = data[index]["spec"]
-        default:
-          node.value = data[index]["#value#"]
-          break;
-      }
-    } else {// 2.嵌套结构
-      node.children = DoObjToTree(data[index], id)
-    }
-    nodes.push(node)
-  }
-  return nodes
-}
-function treeToObj(data: Node[]): any {
-  let config = {};
-  for (let i = 0; i < data.length; i++) {
-    if (data[i].children.length == 0) {
-      if (data[i].type == "slice") {//1.数组
-        if (data[i].value == "") {
-          config[data[i].name] = new Array<string>;
-          continue
-        }
-        let s = data[i].value.split(",");
-        if (data[i].spec == "number") {
-          let numArr = new Array<number>
-          for (let i = 0; i < s.length; i++) {
-            numArr.push(parseInt(s[i]))
-          }
-          config[data[i].name] = numArr
-        } else {
-          config[data[i].name] = data[i].value.split(",");
-        }
-      } else {//2.基本类型
-        config[data[i].name] = data[i].value;
-      }
-    } else {//3.嵌套结构体
-      config[data[i].name] = treeToObj(data[i].children);
-    }
-  }
-  return config;
-}
-
-/**
- * @function 根据模板匹配缓存数据
- */
-function setValue(src: any, dst: any) {
-  for (let i in src) {
-    if (i in dst) {
-      // 1.判断是否为常规字段类型（叶子节点）
-      if ("#type#" in dst[i] && "#value#" in dst[i]) {
-        dst[i]["#value#"] = src[i]
-        continue
-      } else if (isObject(src[i]) && isObject(dst[i])) {
-        setValue(src[i], dst[i]);
-        continue
-      }
-      console.log("失效类型：", i)
+      field.force = src[i].force
     }
   }
 }
 /**
- * @function 读取common配置
+ * @function 绑定common配置
  */
-function setCommon(dst: any, mode: string) {
-  if (!(mode in commonConfig)) {
-    return
-  }
-  doSetCommon(commonConfig[mode], dst)
-}
-function doSetCommon(src: any, dst: any) {
-  for (let field in src) {
-    if (field in dst) {
-      // 1.判断是否为常规字段类型（叶子节点）
-      if ("#type#" in dst[field] && "#value#" in dst[field]) {
-        if (isZero(dst[field]["#value#"])) {
-          dst[field]["#value#"] = src[field]['#value#']
-        }
-        continue
-      } else if (isObject(src[field]) && isObject(dst[field])) {
-        setCommon(src[field], dst[field]);
-        continue
-      }
-      console.log("失效类型：", field)
+function setCommon(src: TreeNode[], dst: TreeNode[]) {
+  for (let i = 0; i < src.length; i++) {
+    let field = dst.find((item) => {
+      return item.id == src[i].id
+    })
+    if (field == undefined) {
+      return
+    }
+    if (!isNil(field.children) && !isNil(src[i].children)) {  //嵌套结构体
+      setCommon(src[i].children, field.children)
+    } else {  //叶子节点
+      field.common = src[i]
     }
   }
 }
+
 /**
- * @function 剔除common配置
+ * @function 解绑common配置
  */
-function trimCommon(common: any, dst: any) {
-  for (let field in common) {
-    if (field in dst) {
-      // 1.判断是否为常规字段类型（叶子节点）
-      if ("#type#" in dst[field] && "#value#" in dst[field]) {
-        if (dst[field]["#type#"] == 'slice') {
-          if (dst[field]["#value#"].toString() == common[field]["#value#"].toString()) {
-            dst[field]["#value#"] = []
-          }
-        } else {
-          if (dst[field]["#value#"] == common[field]["#value#"]) {
-            dst[field]["#value#"] = null
-          }
-        }
-        continue
-      } else if (isObject(common[field]) && isObject(dst[field])) {
-        trimCommon(common[field], dst[field]);
-        continue
-      }
-      console.log("失效类型：", field)
+function trimCommon(nodes: TreeNode[]) {
+  for (let i = 0; i < nodes.length; i++) {
+    if (isNil(nodes[i].children)) {  //叶子节点
+      // delete nodes[i].common 
+      nodes[i].common = undefined
+    } else {                        //嵌套结构体
+      trimCommon(nodes[i].children)
+    }
+  }
+}
+function trimAllCommon(tree: Tree) {
+  for (let service in tree) {
+    for (let mode in tree[service]) {
+      trimCommon(tree[service][mode])
     }
   }
 }
@@ -459,9 +440,6 @@ const showDelete = ref("")
 const visible = ref("")
 const newConfigName = ref("")
 function handleSelect(index: string, service: string, mode: string) {
-  if (showDelete.value.includes('CommonConfig-')) {
-    updateCommon(showDelete.value.substring(showDelete.value.indexOf('-') + 1))
-  }
   showDelete.value = index;
   showing.value = treeData.value[service][mode];
 }
@@ -497,6 +475,7 @@ function hideHandle() {
 
 function addConfig(service: any, name: any) {
   visible.value = ""
+  // 边界判断
   if (name == "empty") {
     return ElNotification({
       title: "Error",
@@ -513,17 +492,24 @@ function addConfig(service: any, name: any) {
       duration: 1000,
     });
   }
-
+  // 追加配置项
   if (addTag.value == "empty") {
-    if (service == 'CommonConfig') {
-      treeData.value[service][name] = objToTree(commonConfigTemplate)
-    } else {
-      let config = template[service]
-      setCommon(config, name)
-      treeData.value[service][name] = objToTree(config)
-    }
+    treeData.value[service][name] = JSON.parse(JSON.stringify(serviceTreeTemplate[service]));
   } else {
     treeData.value[service][name] = JSON.parse(JSON.stringify(treeData.value[service][addTag.value]));
+    trimCommon(treeData.value[service][name])
+  }
+  // 绑定common配置
+  if (service == commonConfig) {
+    for (let s in treeData.value) {
+      if (name in treeData.value[s] && s != service) {
+        setCommon(treeData.value[service][name], treeData.value[s][name])
+      }
+    }
+  } else {
+    if (name in treeData.value[commonConfig]) {
+      setCommon(treeData.value[commonConfig][name], treeData.value[service][name])
+    }
   }
   //加入导出mode列表
   let isValid = false
@@ -557,6 +543,9 @@ const options = ref([] as ModeOption[])
 function isZero(val: any) {
   return (val == 0 || val == '' || val == null || val == undefined || (isArray(val) && val.length == 0))
 }
+function isNodeEuql(a: TreeNode, b: TreeNode) {
+  return (a.id == b.id && a.type == b.type)
+}
 const handleRes = (resp: string, successMsg: string) => {
   if (resp != "") {
     ElNotification({
@@ -574,6 +563,26 @@ const handleRes = (resp: string, successMsg: string) => {
     });
   }
 };
+const showError = (msg: string) => {
+  return ElNotification({
+    title: "Error",
+    message: msg,
+    type: "error",
+    duration: 1000,
+  });
+}
+const showSuccess = (msg: string) => {
+  return ElNotification({
+    title: "Success",
+    message: msg,
+    type: "success",
+    duration: 1000,
+  });
+}
+
+function isNil(val: any) {
+  return val == null || val == undefined
+}
 // #endregion
 
 // #region Style
@@ -660,5 +669,16 @@ function remove(dst: string[], key: string) {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.value-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.common-value-input {
+  flex: 1;
 }
 </style>

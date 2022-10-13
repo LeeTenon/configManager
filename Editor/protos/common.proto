@@ -1,0 +1,10 @@
+// 此文件存放通用配置区结构体
+syntax = "proto3";
+
+package config;
+
+import "types.proto";
+
+message _Common {
+  RpcServerConfig _ = 1;
+}

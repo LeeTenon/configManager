@@ -10,10 +10,6 @@ export function LoadConfigCache() {
   return window['go']['main']['App']['LoadConfigCache']();
 }
 
-export function LoadConfigTemplate() {
-  return window['go']['main']['App']['LoadConfigTemplate']();
-}
-
 export function LoadProto() {
   return window['go']['main']['App']['LoadProto']();
 }

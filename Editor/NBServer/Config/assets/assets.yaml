@@ -1,4 +1,0 @@
-database:
-  mysql:
-    Host: 127.0.0.1
-mode: test
