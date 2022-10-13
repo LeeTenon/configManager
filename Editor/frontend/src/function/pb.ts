@@ -88,9 +88,15 @@ class PBTool {
                         "#type#": "string",
                     }
                     break;
+                case 'bool':
+                    obj[field] = {
+                        "#value#": undefined,
+                        "#type#": "bool",
+                    }
+                    break
                 default:
                     let h = this.findType(src[field]["type"], topName)
-                    if (field[0] == "_") {  //继承字段
+                    if (field[0] == "_" && field[1] == '_') {  //继承字段
                         for (let i in h) {
                             obj[i] = h[i]
                         }

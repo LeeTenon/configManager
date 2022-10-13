@@ -3,60 +3,28 @@ syntax = "proto3";
 
 package config;
 
+import "go-zero.proto";
+
 message RpcServerConfig {
-  string Name = 1;
-  Etcd Etcd = 2;
-  Rabbit Rabbit =3;
-  Database Database = 4;
-  TaskHandler TaskHandler = 5;
-  Mode Mode = 10;
+  ServerRpcServerConf _ServerRpcServerConf = 1;
+  Rabbit Rabbit = 2;
+  Database Database = 3;
+  TaskHandler TaskHandler = 4;
 }
 
-message ApiServerConf {
-     string Host =1;
-     int64 Port=2;
-     string CertFile=3;
-     string KeyFile=4;
-     bool Verbose=5;
-     int64 MaxConns=6;
-     int64 MaxBytes=7;
-     int64 Timeout=8;
-     int64 CpuThreshold=9;
-}
-
-public class ServerRpcServerConf : ServerServiceConf
-{
-    public string ListenOn;
-    public ServerEtcdConf Etcd = new ServerEtcdConf();
-    public ViEnum32<BoolValueWithDefault> Auth;
-    public ViEnum32<BoolValueWithDefault> StrictControl;
-    public Int64 Timeout;
-    public Int64 CpuThreshold;
-}
-
-public class ServerServiceConf : ViSealedData
-{
-    public ServerLogConf Log = new ServerLogConf();
-    public ViEnum32<ServiceConfMode> Mode;
-    public string MetricsUrl;
-    public ServerPrometheusConf Prometheus = new ServerPrometheusConf();
-}
-
-message Etcd {
-  repeated string Host = 1;
-  string key = 2;
-}
-
-message EtcdNoKey {
-  repeated string Host = 1;
+message ApiServerConfig {
+  ServerApiServerConf _ServerApiServerConf = 1;
+  Rabbit Rabbit = 2;
+  Database Database = 3;
+  TaskHandler TaskHandler = 4;
 }
 
 message Rabbit{
-   string Host=1;
-	 int64 HttpPort=2;
-	 string User=3;
-	 string Password=4;
-	 int64 MqQos=5;
+  string Host = 1;
+  int64 HttpPort = 2;
+  string User = 3;
+  string Password = 4;
+  int64 MqQos = 5;
 }
 
 message Database {
@@ -66,49 +34,49 @@ message Database {
 }
 
 message Mysql {
-   string Host=1;
-	 int64 MaxOpenConnections=2;
-	 int64 MaxIdleConnections=3;
-	 string MaxConnectionLifetime=4;
+  string Host = 1;
+  int64 MaxOpenConnections = 2;
+  int64 MaxIdleConnections = 3;
+  string MaxConnectionLifetime = 4;
 }
 
 message Redis {
-   string Host=1;
-	 string Pass=2;
-	 bool Verbose=3;
-	 bool Tls=4;
-	 bool TlsSkipVerify=5;
-	 string TlsHandshakeTimeout=6;
-	 int64 MaxIdle=7;
-	 int64 MaxActive=8;
-	 string IdleTimeout=9;
-	 string ConnectTimeout=10;
-	 string ReadTimeout=11;
-	 string WriteTimeout=12;
+  string Host = 1;
+  string Pass = 2;
+  bool Verbose = 3;
+  bool Tls = 4;
+  bool TlsSkipVerify = 5;
+  string TlsHandshakeTimeout = 6;
+  int64 MaxIdle = 7;
+  int64 MaxActive = 8;
+  string IdleTimeout = 9;
+  string ConnectTimeout = 10;
+  string ReadTimeout = 11;
+  string WriteTimeout = 12;
 }
 
 message Dynamo {
-  EStorageType StorageType=1;
-	 string Host=2;
-	 string Endpoint=3;
-	 string Prefix=4;
-	 int64 MaxLength=5;
-	 string Tick=6;
+  EStorageType StorageType = 1;
+  string Host = 2;
+  string Endpoint = 3;
+  string Prefix = 4;
+  int64 MaxLength = 5;
+  string Tick = 6;
 }
 
 message TaskHandler {
-   int64 Threshold=1;
-	 int64 Threads=2;
-	 string Deadline=3;
-	 string RetryInterval=4;
-	 int64 UpdateRetryTimes=5;
-	 int64 InsertRetryTimes=6;
+  int64 Threshold = 1;
+  int64 Threads = 2;
+  string Deadline = 3;
+  string RetryInterval = 4;
+  int64 UpdateRetryTimes = 5;
+  int64 InsertRetryTimes = 6;
 }
 
 message MQConfig{
-	 int64 Threshold=1;
-	 int64 Threads=2;
-	 int64 RetryTimes=3;
+  int64 Threshold = 1;
+  int64 Threads = 2;
+  int64 RetryTimes = 3;
 }
 
 enum Level {
@@ -124,6 +92,6 @@ enum Mode {
 }
 
 enum EStorageType{
-	memory = 0;
-	dynamo = 1; 
+  memory = 0;
+  dynamo = 1;
 }

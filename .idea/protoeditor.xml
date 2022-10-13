@@ -10,6 +10,12 @@
         <ImportPathEntry>
           <option name="location" value="file://$PROJECT_DIR$/Editor" />
         </ImportPathEntry>
+        <ImportPathEntry>
+          <option name="location" value="file://$PROJECT_DIR$/Editor/build/bin/protos" />
+        </ImportPathEntry>
+        <ImportPathEntry>
+          <option name="location" value="file://$PROJECT_DIR$/Editor/build/bin/protos" />
+        </ImportPathEntry>
       </list>
     </option>
     <option name="descriptorPath" value="google/protobuf/descriptor.proto" />

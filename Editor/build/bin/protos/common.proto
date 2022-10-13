@@ -4,7 +4,9 @@ syntax = "proto3";
 package config;
 
 import "types.proto";
+import "go-zero.proto";
 
 message _Common {
-  RpcServerConfig _RpcServerConfig = 1;
+  ServerApiServerConf _ServerApiServerConf = 1;
+  RpcServerConfig __RpcServerConfig = 2;
 }

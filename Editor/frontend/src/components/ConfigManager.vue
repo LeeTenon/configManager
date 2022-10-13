@@ -15,18 +15,24 @@
       </el-header>
     </el-container>
     <el-container>
-      <el-aside width="150px" class="aside">
+      <el-aside width="200px" class="aside">
         <Logo />
         <el-menu class="menu">
           <el-sub-menu v-for="(configs, service) in treeData" :index="service">
             <template #title>
+              <div class="service-tag-box">
+                <span>S</span>
+              </div>
               <h4>{{ service }}</h4>
             </template>
             <el-menu-item v-for="(config, mode) in configs" :index="service + '-' + mode"
               @click="handleSelect(service + '-' + mode,service as string,mode as string)">
-              <div style="display: flex;width:calc(100% - 30px);">
-                <div>
-                  {{ mode }}
+              <template #title>
+                <div style="display: flex;  align-items: center;">
+                  <div class="config-tag-box">
+                    <span>S</span>
+                  </div>
+                  <span>{{ mode }}</span>
                 </div>
                 <el-popconfirm v-if="showDelete == service + '-' + mode" confirm-button-text="Yes"
                   cancel-button-text="No" title="确认删除?" @confirm="confirmDelete(service,mode)" @cancel="cancelDelete">
@@ -38,7 +44,7 @@
                     </div>
                   </template>
                 </el-popconfirm>
-              </div>
+              </template>
             </el-menu-item>
             <el-popover placement="right" :width="300" trigger="click" :visible="isVisible(service as string)"
               @before-leave="hideHandle">
@@ -73,7 +79,7 @@
       <!--数据主体-->
       <el-main>
         <el-table :data="showing" style="width: 100%" :max-height="height" row-key="id" border size="small"
-          :expand-row-keys="expendedRow">
+          :expand-row-keys="expendedRow" @expand-change="handleExpend">
           <el-table-column prop="name" label="配置项" style="width: 50%">
             <template #default="scope">
               <span v-if="scope.row.type=='slice'" style="align-items: center">
@@ -91,6 +97,10 @@
                     size="small" clearable v-model="scope.row.value">
                     <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
                   </el-select>
+                  <el-select v-else-if="scope.row.type == 'bool'" class="common-value-input" placeholder="Select"
+                    size="small" clearable v-model="scope.row.value">
+                    <el-option v-for="value in boolEnum" :key="value.value" :label="value.lable" :value="value.value" />
+                  </el-select>
                   <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.value" size="small"
                     class="common-value-input" />
                   <el-input v-else v-model="scope.row.value" size="small" class="common-value-input" />
@@ -103,6 +113,10 @@
                     size="small" clearable v-model="scope.row.common.value" disabled>
                     <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
                   </el-select>
+                  <el-select v-else-if="scope.row.type == 'bool'" class="common-value-input" placeholder="Select"
+                    size="small" clearable v-model="scope.row.common.value" disabled>
+                    <el-option v-for="value in boolEnum" :key="value.value" :label="value.lable" :value="value.value" />
+                  </el-select>
                   <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.common.value" size="small"
                     disabled class="common-value-input" />
                   <el-input v-else v-model="scope.row.common.value" size="small" disabled />
@@ -113,13 +127,6 @@
             </template>
           </el-table-column>
         </el-table>
-        <div class="container">
-          <a class="btn btn-3">
-            <el-icon color="white">
-              <Plus />
-            </el-icon>
-          </a>
-        </div>
       </el-main>
     </el-container>
   </div>
@@ -129,15 +136,24 @@
 import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
 import { stringify } from "yaml";
-import { trimDefault } from "../function/tools"
 import { loadPB } from "../function/pb"
 import { Close } from '@element-plus/icons-vue'
 import { isArray, isUndefined } from "lodash";
 import Logo from "./Logo.vue";
 import Toolbar from "./toolbar/toolbar.vue";
-import { isEmpty } from "element-plus/es/utils";
 
 const commonConfig = 'CommonConfig'
+
+const boolEnum = [
+  {
+    'lable': 'true',
+    'value': true
+  },
+  {
+    'lable': 'false',
+    'value': false
+  }
+]
 
 // Init
 onMounted(async () => {
@@ -339,7 +355,7 @@ function treeToObj(data: TreeNode[]): any {
     let node = data[i]
     let value: any
     if (isNil(node.children)) { //  叶子节点
-      if (node.force) { //使用common配置
+      if (!node.force && !isNil(node.common)) { //使用common配置
         value = node.common!.value
       } else {
         value = node.value
@@ -357,21 +373,26 @@ function treeToObj(data: TreeNode[]): any {
             config[node.name] = value.split(",");
           }
         } else {//2.基本类型
-          config[data[i].name] = value;
+          config[node.name] = value;
         }
       }
     } else {//3.嵌套结构体
       let sub = treeToObj(data[i].children)
       if (!isNil(sub)) {
-        config[data[i].name] = sub
+        if (node.name[0] == '_') {
+          for (let f in sub) {
+            config[f] = sub[f]
+          }
+        } else {
+          config[node.name] = sub
+        }
       }
     }
   }
 
-  if (Object.keys(config).length == 0) {
-    return
+  if (Object.keys(config).length > 0) {
+    return config
   }
-  return config;
 }
 
 /**
@@ -402,7 +423,7 @@ function setCommon(src: TreeNode[], dst: TreeNode[]) {
       return item.id == src[i].id
     })
     if (field == undefined) {
-      return
+      continue
     }
     if (!isNil(field.children) && !isNil(src[i].children)) {  //嵌套结构体
       setCommon(src[i].children, field.children)
@@ -541,7 +562,7 @@ const options = ref([] as ModeOption[])
 
 // #region utils
 function isZero(val: any) {
-  return (val == 0 || val == '' || val == null || val == undefined || (isArray(val) && val.length == 0))
+  return (val == 0 || val == '' || val == null || val == false || val == undefined || (isArray(val) && val.length == 0))
 }
 function isNodeEuql(a: TreeNode, b: TreeNode) {
   return (a.id == b.id && a.type == b.type)
@@ -591,7 +612,6 @@ height.value = document.body.clientHeight - 110 + "px";
 window.onresize = () => {
   height.value = document.body.clientHeight - 110 + "px";
 };
-
 
 const expendedRow = ref([] as string[]);
 const handleExpend = (row: any, isExpend: boolean) => {
@@ -655,6 +675,7 @@ function remove(dst: string[], key: string) {
   width: 20px;
   height: 50px;
   margin-left: auto;
+  margin-right: -20px;
   background-color: rgba(128, 128, 128, 0.233);
   transition: all 150ms linear;
 }
@@ -680,5 +701,31 @@ function remove(dst: string[], key: string) {
 
 .common-value-input {
   flex: 1;
+}
+
+.service-tag-box {
+  height: 20px;
+  width: 20px;
+  background-color: #66abf5;
+  display: inline-block;
+  text-align: center;
+  line-height: 20px;
+  margin-right: 10px;
+  border-radius: 3px;
+  color: white;
+  font-weight: 1000;
+}
+
+.config-tag-box {
+  height: 20px;
+  width: 20px;
+  background-color: rgb(234, 234, 111);
+  display: inline-block;
+  text-align: center;
+  line-height: 20px;
+  margin-right: 10px;
+  border-radius: 3px;
+  color: white;
+  font-weight: 1000;
 }
 </style>
