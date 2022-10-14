@@ -5,15 +5,24 @@ package config;
 
 import "go-zero.proto";
 
-message RpcServerConfig {
-  ServerRpcServerConf _ServerRpcServerConf = 1;
-  Rabbit Rabbit = 2;
-  Database Database = 3;
-  TaskHandler TaskHandler = 4;
+message RpcServerBaseConfig {
+  string Name = 1;
+  ServerApiServerConf _ServerApiServerConf = 2;
+  Common __Common = 3;
+  string ListenOn = 4;
+  ServerMode Mode = 5;
 }
 
-message ApiServerConfig {
-  ServerApiServerConf _ServerApiServerConf = 1;
+message ApiServerBaseConfig {
+  string Name = 1;
+  ServerRpcServerConf _ServerRpcServerConf = 2;
+  Common __Common = 3;
+  int64 Port = 4;
+  ServerMode Mode = 5;
+}
+
+message Common {
+  Etcd Etcd = 1;
   Rabbit Rabbit = 2;
   Database Database = 3;
   TaskHandler TaskHandler = 4;
@@ -83,12 +92,6 @@ enum Level {
   WARNING = 0;
   FATAL = 1;
   SEVERE = 2;
-}
-
-enum Mode {
-  dev = 0;
-  test = 1;
-  pro = 2;
 }
 
 enum EStorageType{

@@ -16,7 +16,7 @@ message Gate_Config {
     string timeout = 1;
   }
 
-  RpcServerConfig __RpcServerConfig = 1;
+  RpcServerBaseConfig __RpcServerBaseConfig = 1;
   SpecConfig Spec = 2;
 }
 
@@ -25,7 +25,7 @@ message Login_Config {
     string timeout = 1;
   }
 
-  ApiServerConfig __ApiServerConfig = 1;
+  ApiServerBaseConfig __ApiServerBaseConfig = 1;
   SpecConfig Spec = 2;
 }
 
@@ -34,7 +34,7 @@ message Gm_Config {
     string timeout = 1;
   }
 
-  ApiServerConfig __ApiServerConfig = 1;
+  ApiServerBaseConfig __ApiServerBaseConfig = 1;
   SpecConfig Spec = 2;
 }
 
@@ -43,7 +43,7 @@ message Assets_Config {
     string timeout = 1;
   }
 
-  RpcServerConfig __RpcServerConfig = 1;
+  RpcServerBaseConfig __RpcServerBaseConfig = 1;
   SpecConfig Spec = 2;
 }
 
@@ -52,7 +52,7 @@ message Challenge_Config {
     Level level = 1;
   }
 
-  RpcServerConfig __RpcServerConfig = 1;
+  RpcServerBaseConfig __RpcServerBaseConfig = 1;
   SpecConfig Spec = 2;
 }
 
@@ -62,6 +62,6 @@ message Event_Config {
     string gameMode = 2;
   }
 
-  RpcServerConfig __RpcServerConfig = 1;
+  RpcServerBaseConfig __RpcServerBaseConfig = 1;
   SpecConfig Spec = 2;
 }

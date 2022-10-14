@@ -6,10 +6,31 @@
           <el-select v-model="mode" class="select" placeholder="请选择导出模式" style="width: 150px; margin-right: 10px">
             <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
-          <el-button v-if="mode == ''" type="primary" disabled>保持并生成配置文件</el-button>
-          <el-button v-else type="primary" @click="SaveConfig()">保持并生成配置文件</el-button>
-          <!-- <el-button type="primary" @click="SaveConfig()">保存配置</el-button> -->
+          <el-button v-if="mode == ''" type="primary" disabled>保存并生成配置</el-button>
+          <el-button v-else type="primary" @click="SaveConfig()">保存并生成配置</el-button>
           <el-button type="primary" @click="SyncDataTable()">同步数据表</el-button>
+          <el-popover placement="bottom" :width="400" trigger="click" @show="checkBanch" :visible="banchVisible">
+            <template #reference>
+              <el-button @click="banchVisible = !banchVisible">批量创建配置</el-button>
+            </template>
+            <div class="add-confirm-box" style="padding:10px">
+              <el-form-item label="(逗号分隔)配置名：" label-width="140px">
+                <el-input v-model="banchTarget" />
+              </el-form-item>
+              <el-form-item label="复制模板：" label-width="140px">
+                <el-select placeholder="Select" clearable v-model="addTag" style="width: 100%;">
+                  <el-option key="empty" label="空模板" value="empty" />
+                  <el-option v-for="item in canBanchTemplate" :key="item.value" :label="item.lable"
+                    :value="item.value" />
+                </el-select>
+              </el-form-item>
+              <div style=" align-self: center;">
+                <el-button v-if="banchTarget == '' || addTag == ''" type="primary" disabled>确定</el-button>
+                <el-button v-else type="primary" @click="banchAddConfig()">确定</el-button>
+                <el-button type="primary" @click="cancelAdd">取消</el-button>
+              </div>
+            </div>
+          </el-popover>
         </div>
         <Toolbar />
       </el-header>
@@ -17,64 +38,66 @@
     <el-container>
       <el-aside width="200px" class="aside">
         <Logo />
-        <el-menu class="menu">
-          <el-sub-menu v-for="(configs, service) in treeData" :index="service">
-            <template #title>
-              <div class="service-tag-box">
-                <span>S</span>
-              </div>
-              <h4>{{ service }}</h4>
-            </template>
-            <el-menu-item v-for="(config, mode) in configs" :index="service + '-' + mode"
-              @click="handleSelect(service + '-' + mode,service as string,mode as string)">
+        <el-scrollbar style="height: calc(100% - 50px);" always>
+          <el-menu class="menu">
+            <el-sub-menu v-for="(configs, service) in treeData" :index="service">
               <template #title>
-                <div style="display: flex;  align-items: center;">
-                  <div class="config-tag-box">
-                    <span>S</span>
-                  </div>
-                  <span>{{ mode }}</span>
+                <div class="service-tag-box">
+                  <span>S</span>
                 </div>
-                <el-popconfirm v-if="showDelete == service + '-' + mode" confirm-button-text="Yes"
-                  cancel-button-text="No" title="确认删除?" @confirm="confirmDelete(service,mode)" @cancel="cancelDelete">
-                  <template #reference>
-                    <div class="delete-buttom">
-                      <el-icon style="margin-left: 5px;">
-                        <Close />
-                      </el-icon>
+                <h4>{{ service }}</h4>
+              </template>
+              <el-menu-item v-for="(config, mode) in configs" :index="service + '-' + mode"
+                @click="handleSelect(service + '-' + mode,service as string,mode as string)">
+                <template #title>
+                  <div style="display: flex;  align-items: center;">
+                    <div class="config-tag-box">
+                      <span>M</span>
                     </div>
-                  </template>
-                </el-popconfirm>
-              </template>
-            </el-menu-item>
-            <el-popover placement="right" :width="300" trigger="click" :visible="isVisible(service as string)"
-              @before-leave="hideHandle">
-              <template #reference>
-                <div class="add-line" @click="addHandle(service as string)">
-                  <el-icon color="white">
-                    <Plus />
-                  </el-icon>
+                    <span>{{ mode }}</span>
+                  </div>
+                  <el-popconfirm v-if="showDelete == service + '-' + mode" confirm-button-text="Yes"
+                    cancel-button-text="No" title="确认删除?" @confirm="confirmDelete(service,mode)">
+                    <template #reference>
+                      <div class="delete-buttom">
+                        <el-icon style="margin-left: 5px;">
+                          <Close />
+                        </el-icon>
+                      </div>
+                    </template>
+                  </el-popconfirm>
+                </template>
+              </el-menu-item>
+              <el-popover placement="right" :width="300" trigger="click" :visible="isVisible(service as string)"
+                @before-leave="hideHandle">
+                <template #reference>
+                  <div class="add-line" @click="addHandle(service as string)">
+                    <el-icon color="white">
+                      <Plus />
+                    </el-icon>
+                  </div>
+                </template>
+                <div class="add-confirm-box">
+                  <el-form-item label="配置名：" label-width="100px">
+                    <el-input v-model="newConfigName" />
+                  </el-form-item>
+                  <el-form-item label="复制模板：" label-width="100px">
+                    <el-select placeholder="Select" clearable v-model="addTag">
+                      <el-option key="empty" label="空模板" value="empty" />
+                      <el-option v-for="(config, mode) in configs" :key="mode" :label="mode" :value="mode" />
+                    </el-select>
+                  </el-form-item>
+                  <div style=" align-self: center; ;">
+                    <el-button v-if="newConfigName == '' || addTag == ''" type="primary" disabled
+                      @click="addConfig(service,newConfigName)">确定</el-button>
+                    <el-button v-else type="primary" @click="addConfig(service,newConfigName)">确定</el-button>
+                    <el-button type="primary" @click="cancelAdd">取消</el-button>
+                  </div>
                 </div>
-              </template>
-              <div class="add-confirm-box">
-                <el-form-item label="配置名：" label-width="100px">
-                  <el-input v-model="newConfigName" />
-                </el-form-item>
-                <el-form-item label="复制模板：" label-width="100px">
-                  <el-select placeholder="Select" clearable v-model="addTag">
-                    <el-option key="empty" label="空模板" value="empty" />
-                    <el-option v-for="(config, mode) in configs" :key="mode" :label="mode" :value="mode" />
-                  </el-select>
-                </el-form-item>
-                <div style=" align-self: center; ;">
-                  <el-button v-if="newConfigName == '' || addTag == ''" type="primary" disabled
-                    @click="addConfig(service,newConfigName)">确定</el-button>
-                  <el-button v-else type="primary" @click="addConfig(service,newConfigName)">确定</el-button>
-                  <el-button type="primary" @click="cancelAdd">取消</el-button>
-                </div>
-              </div>
-            </el-popover>
-          </el-sub-menu>
-        </el-menu>
+              </el-popover>
+            </el-sub-menu>
+          </el-menu>
+        </el-scrollbar>
       </el-aside>
       <!--数据主体-->
       <el-main>
@@ -154,6 +177,56 @@ const boolEnum = [
     'value': false
   }
 ]
+
+interface SeletctEnum {
+  'lable': string
+  'value': any
+}
+
+const banchTarget = ref('')
+const canBanchTemplate = ref([] as SeletctEnum[])
+const banchVisible = ref(false)
+function banchAddConfig() {
+  banchVisible.value = false
+  let tree = treeData.value
+  let news = banchTarget.value.split(',')
+  for (let service in tree) {
+    for (let i = 0; i < news.length; i++) {
+      if (news[i] in tree[service]) {
+        continue
+      }
+      addConfig(service, news[i])
+    }
+  }
+}
+function checkBanch() {
+  let tree = treeData.value
+  let template = new Array
+  let has = new Array<string>
+  for (let service in tree) {
+    for (let mode in tree[service]) {
+      has.push(mode)
+    }
+    break
+  }
+  for (let i = 0; i < has.length; i++) {
+    let lack = false
+    for (let service in tree) {
+      if (!(has[i] in tree[service])) {
+        lack = true
+        break
+      }
+    }
+    if (!lack) {
+      template.push({
+        lable: has[i],
+        value: has[i]
+      })
+    }
+  }
+  console.log(template)
+  canBanchTemplate.value = template
+}
 
 // Init
 onMounted(async () => {
@@ -404,7 +477,7 @@ function setValue(src: TreeNode[], dst: TreeNode[]) {
       return item.id == src[i].id
     })
     if (field == undefined) {
-      return
+      continue
     }
     if (!isNil(src[i].children)) {  //嵌套结构体
       setValue(src[i].children, field.children)
@@ -465,16 +538,8 @@ function handleSelect(index: string, service: string, mode: string) {
   showing.value = treeData.value[service][mode];
 }
 
-function deleteHandle(service: any, mode: any) {
-  delete treeData.value[service][mode]
-}
-
 function confirmDelete(service: any, mode: any) {
   delete treeData.value[service][mode]
-}
-
-function cancelDelete() {
-
 }
 
 function addHandle(name: string) {
@@ -483,6 +548,9 @@ function addHandle(name: string) {
 }
 
 function cancelAdd() {
+  banchTarget.value = ''
+  addTag.value = ""
+  banchVisible.value = false
   visible.value = ""
 }
 

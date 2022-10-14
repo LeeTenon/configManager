@@ -7,6 +7,7 @@ import "types.proto";
 import "go-zero.proto";
 
 message _Common {
-  ServerApiServerConf _ServerApiServerConf = 1;
-  RpcServerConfig __RpcServerConfig = 2;
+  ServerRpcServerConf _ServerRpcServerConf = 1;
+  ServerApiServerConf _ServerApiServerConf = 2;
+  Common __Common = 3;
 }

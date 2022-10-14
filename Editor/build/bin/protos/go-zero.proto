@@ -13,12 +13,13 @@ message ServerApiServerConf {
   int64 MaxBytes = 8;
   int64 Timeout = 9;
   int64 CpuThreshold = 10;
+  // Etcd Etcd = 11;
 }
 
 message ServerRpcServerConf {
   ServerConf __ServerConf = 1;
-  string ListenOn = 2;
-  Etcd Etcd = 3;
+  // string ListenOn = 2;
+  // Etcd Etcd = 3;
   bool Auth = 4;
   bool StrictControl = 5;
   int64 Timeout = 6;
@@ -29,7 +30,7 @@ message ServerConf {
   ServerLogConf Log = 1;
   ServerPrometheusConf Prometheus = 2;
   string MetricsUrl = 3;
-  ServerMode Mode = 4;
+  // ServerMode Mode = 4;
 }
 
 message ServerLogConf {
