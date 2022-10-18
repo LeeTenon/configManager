@@ -285,8 +285,14 @@ const SaveConfig = async () => {
     }
   })
 }
-const SyncDataTable = () => {
-
+const SyncDataTable = async() => {
+  await window.go.main.App.SyncData().then((resp: any) => {
+    if (resp.Error != '') {
+      showError(resp.Error)
+    } else {
+      showSuccess('同步数据表成功')
+    }
+  })
 }
 // #endregion
 
