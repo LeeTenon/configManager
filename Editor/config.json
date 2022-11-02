@@ -1,8 +1,0 @@
-{
-	"OutputPath": "./build/bin/configs",
-	"CachePath": "./build/bin/cache.json",
-	"ProtoPath": "./build/bin/protos",
-	"SyncList": null,
-	"SyncSource": null,
-	"SyncTarget": null
-}

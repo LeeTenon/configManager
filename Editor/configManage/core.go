@@ -11,20 +11,12 @@ import (
 
 type (
     ConfigManager struct {
-        OutputPath string
-        CachePath  string
-        ProtoPath  string
-        SyncList   *Tables
-        SyncSource DTPath
-        SyncTarget *DTPath
-    }
-    Tables struct {
-        Csv  []string
-        Json []string
-    }
-    DTPath struct {
-        Csv  string
-        Json string
+        OutputPath    string
+        CachePath     string
+        ProtoPath     string
+        SyncSourceDir string
+        SyncTargetDir string
+        SyncList      []string
     }
 )
 
@@ -41,13 +33,15 @@ func (c *ConfigManager) LoadProto() (map[string]string, error) {
 
     protos := make(map[string]string)
     for _, file := range files {
-        logx.Infof("读取proto配置文件: %s", file.Name())
-        data, err := ioutil.ReadFile(path.Join(c.ProtoPath, file.Name()))
-        if err != nil {
-            logx.Errorf("load proto file[%s] error: %s", file.Name(), err.Error())
-            continue
+        if !file.IsDir() {
+            logx.Infof("读取proto配置文件: %s", file.Name())
+            data, err := ioutil.ReadFile(path.Join(c.ProtoPath, file.Name()))
+            if err != nil {
+                logx.Errorf("load proto file[%s] error: %s", file.Name(), err.Error())
+                continue
+            }
+            protos[file.Name()[:strings.LastIndexByte(file.Name(), '.')]] = string(data)
         }
-        protos[file.Name()[:strings.LastIndexByte(file.Name(), '.')]] = string(data)
     }
     return protos, nil
 
@@ -89,34 +83,21 @@ func (c *ConfigManager) Generate(yamlData map[string]string) error {
     return nil
 }
 
-func (c *ConfigManager) SyncCsv() error {
-    // 同步Csv
-    for _, name := range c.SyncList.Csv {
-        content, err := ioutil.ReadFile(path.Join(c.SyncSource.Csv, name))
+func (c *ConfigManager) SyncData() error {
+    // 同步数据表
+    for _, name := range c.SyncList {
+        content, err := ioutil.ReadFile(path.Join(c.SyncSourceDir, name))
         if err != nil {
             logx.Errorf("read csv[%s] error: %s", name, err.Error())
             continue
         }
-        if err = writeFile(c.SyncTarget.Csv, name, content); err != nil {
+        if err = writeFile(c.SyncTargetDir, name, content); err != nil {
             logx.Errorf("write csv[%s] error: %s", name, err.Error())
             continue
         }
         logx.Infof("sync csv data [%s] success", name)
     }
-    // 同步Json
-    for _, name := range c.SyncList.Json {
-        content, err := ioutil.ReadFile(path.Join(c.SyncSource.Json, name))
-        if err != nil {
-            logx.Errorf("read json[%s] error: %s", name, err.Error())
-            continue
-        }
-        if err = writeFile(c.SyncTarget.Json, name, content); err != nil {
-            logx.Errorf("write json[%s] error: %s", name, err.Error())
-            continue
-        }
-        logx.Infof("sync json data [%s] success", name)
-    }
-    logx.Infof("sync data files complete, total: %d files!", len(c.SyncList.Csv)+len(c.SyncList.Json))
+    logx.Infof("sync data files complete, total: %d files!", len(c.SyncList))
 
     return nil
 }

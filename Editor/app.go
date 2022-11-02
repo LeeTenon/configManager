@@ -75,8 +75,8 @@ func (a *App) GenConfig(in map[string]string) *Response {
     return &Response{}
 }
 
-func (a *App) SyncCsv() *Response {
-    if err := a.configMgr.SyncCsv(); err != nil {
+func (a *App) SyncData() *Response {
+    if err := a.configMgr.SyncData(); err != nil {
         return &Response{Error: err.Error()}
     }
     return &Response{}
