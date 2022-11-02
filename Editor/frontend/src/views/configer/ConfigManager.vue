@@ -78,55 +78,7 @@
       </el-aside>
       <!--数据主体-->
       <el-main>
-        <el-table :data="showing" style="width: 100%" :max-height="height" row-key="id" border size="small"
-          :expand-row-keys="expendedRow" @expand-change="handleExpend">
-          <el-table-column prop="name" label="配置项" style="width: 50%">
-            <template #default="scope">
-              <span v-if="scope.row.type=='slice'" style="align-items: center">
-                <span>{{ scope.row.name}}</span>
-                <el-tag type="info" style="margin-left: 10px" size="small">Slice</el-tag>
-              </span>
-              <span v-else>{{ scope.row.name }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="value" label="值" style="width: 50%">
-            <template #default="scope">
-              <div v-if="isNil(scope.row.children)" style="display: flex; align-items: center">
-                <div v-if="isNil(scope.row.common) || scope.row.force" class="value-box">
-                  <el-select v-if="scope.row.type == 'enum'" class="common-value-input" placeholder="Select"
-                    size="small" clearable v-model="scope.row.value">
-                    <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
-                  </el-select>
-                  <el-select v-else-if="scope.row.type == 'bool'" class="common-value-input" placeholder="Select"
-                    size="small" clearable v-model="scope.row.value">
-                    <el-option v-for="value in boolEnum" :key="value.value" :label="value.lable" :value="value.value" />
-                  </el-select>
-                  <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.value" size="small"
-                    class="common-value-input" />
-                  <el-input v-else v-model="scope.row.value" size="small" class="common-value-input" />
-                  <el-button v-if="!isUndefined(scope.row.common)" @click="scope.row.force = !scope.row.force"
-                    size="small" style="margin-left: 15px;">
-                    使用通用配置</el-button>
-                </div>
-                <div v-else class="value-box">
-                  <el-select v-if="scope.row.type == 'enum'" class="common-value-input" placeholder="Select"
-                    size="small" clearable v-model="scope.row.common.value" disabled>
-                    <el-option v-for="(value,key) in enums[scope.row.spec]" :key="value" :label="key" :value="key" />
-                  </el-select>
-                  <el-select v-else-if="scope.row.type == 'bool'" class="common-value-input" placeholder="Select"
-                    size="small" clearable v-model="scope.row.common.value" disabled>
-                    <el-option v-for="value in boolEnum" :key="value.value" :label="value.lable" :value="value.value" />
-                  </el-select>
-                  <el-input-number v-else-if="scope.row.type == 'number'" v-model="scope.row.common.value" size="small"
-                    disabled class="common-value-input" />
-                  <el-input v-else v-model="scope.row.common.value" size="small" disabled />
-                  <el-button @click="scope.row.force = !scope.row.force" size="small" style="margin-left: 15px;">修改
-                  </el-button>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
+        <Table :data="showing" :enums="enums"></Table>
       </el-main>
     </el-container>
   </div>
@@ -136,24 +88,15 @@
 import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
 import { stringify } from "yaml";
-import { loadPB } from "../function/pb"
+import { loadPB } from "../../function/pb"
 import { Close } from '@element-plus/icons-vue'
-import { isArray, isUndefined } from "lodash";
-import Logo from "./Logo.vue";
-import Toolbar from "./toolbar/toolbar.vue";
+import { isArray } from "lodash";
+
+import Logo from "./components/Logo.vue";
+import Toolbar from "./components/toolbar.vue";
+import Table from './components/table.vue'
 
 const commonConfig = 'CommonConfig'
-
-const boolEnum = [
-  {
-    'lable': 'true',
-    'value': true
-  },
-  {
-    'lable': 'false',
-    'value': false
-  }
-]
 
 // Init
 onMounted(async () => {
@@ -465,10 +408,6 @@ function handleSelect(index: string, service: string, mode: string) {
   showing.value = treeData.value[service][mode];
 }
 
-function deleteHandle(service: any, mode: any) {
-  delete treeData.value[service][mode]
-}
-
 function confirmDelete(service: any, mode: any) {
   delete treeData.value[service][mode]
 }
@@ -561,29 +500,6 @@ const options = ref([] as ModeOption[])
 // #endregion
 
 // #region utils
-function isZero(val: any) {
-  return (val == 0 || val == '' || val == null || val == false || val == undefined || (isArray(val) && val.length == 0))
-}
-function isNodeEuql(a: TreeNode, b: TreeNode) {
-  return (a.id == b.id && a.type == b.type)
-}
-const handleRes = (resp: string, successMsg: string) => {
-  if (resp != "") {
-    ElNotification({
-      title: "Error",
-      message: resp,
-      type: "error",
-      duration: 1000,
-    });
-  } else {
-    ElNotification({
-      title: "Success",
-      message: successMsg,
-      type: "success",
-      duration: 1000,
-    });
-  }
-};
 const showError = (msg: string) => {
   return ElNotification({
     title: "Error",
@@ -600,32 +516,14 @@ const showSuccess = (msg: string) => {
     duration: 1000,
   });
 }
-
 function isNil(val: any) {
   return val == null || val == undefined
 }
-// #endregion
-
-// #region Style
-const height = ref();
-height.value = document.body.clientHeight - 110 + "px";
-window.onresize = () => {
-  height.value = document.body.clientHeight - 110 + "px";
-};
-
-const expendedRow = ref([] as string[]);
-const handleExpend = (row: any, isExpend: boolean) => {
-  if (isExpend) {
-    expendedRow.value.push(row.id);
-  } else {
-    remove(expendedRow.value, row.id);
-  }
-};
-function remove(dst: string[], key: string) {
-  var index = dst.indexOf(key);
-  if (index > -1) {
-    dst.splice(index, 1);
-  }
+function isZero(val: any) {
+  return (val == 0 || val == '' || val == null || val == false || val == undefined || (isArray(val) && val.length == 0))
+}
+function isNodeEuql(a: TreeNode, b: TreeNode) {
+  return (a.id == b.id && a.type == b.type)
 }
 // #endregion
 </script>

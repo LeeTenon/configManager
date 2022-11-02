@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import ConfigManage from './components/ConfigManager.vue'
+import ConfigManage from './views/configer/ConfigManager.vue'
 </script>
 
 <style>

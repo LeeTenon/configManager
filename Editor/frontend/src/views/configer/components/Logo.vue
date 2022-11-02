@@ -1,8 +1,8 @@
 <template>
     <div class="layout-logo">
-        <img class="logo-img" src="../assets/logo.png" />
+        <img class="logo-img" src="../../../assets/logo.png" />
         <div  class="website-name">
-            配表工具
+            <span>配表工具</span> 
         </div>
     </div>
 </template>
