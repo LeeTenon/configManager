@@ -1,0 +1,24 @@
+syntax = "proto3";
+package config;
+
+message RpcServerConfig {
+  Database Database = 1;
+  int64 Listen = 2;
+  Mode Mode = 3;
+}
+
+message Database {
+  message MysqlConfig { string Host = 1; }
+  message RedisConfig {
+    string Host = 1;
+    string Password = 2;
+  }
+  MysqlConfig Mysql = 1;
+  RedisConfig Redis = 2;
+}
+
+enum Mode {
+  dev = 0;
+  test = 1;
+  pro = 2;
+}
