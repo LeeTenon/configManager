@@ -19,6 +19,7 @@
     "yaml": "^2.1.1"
   },
   "devDependencies": {
+    "@types/node": "^18.7.18",
     "@vitejs/plugin-vue": "^3.0.0",
     "concurrently": "^7.2.2",
     "cross-env": "^7.0.3",
@@ -26,25 +27,5 @@
     "vite": "^3.0.0",
     "vue-tsc": "^0.38.4",
     "wait-on": "^6.0.1"
-  },
-  "build": {
-    "appId": "vue-app",
-    "productName": "ElectronApp",
-    "copyright": "Copyright © 2022 <Tenon>",
-    "mac": {
-      "category": "public.app-category.utilities"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*"
-    ],
-    "directories": {
-      "buildResources": "assets",
-      "output": "dist_electron"
-    }
   }
 }

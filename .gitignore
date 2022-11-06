@@ -36,4 +36,3 @@ bin/
 *.swp
 
 node_modules/
-/build

@@ -1,6 +1,6 @@
 {
   "name": "配表工具",
-  "outputfilename": "../../配表工具",
+  "outputfilename": ".",
   "assetdir": "frontend/dist",
   "wailsjsdir": "frontend/src",
   "frontend:install": "npm install",

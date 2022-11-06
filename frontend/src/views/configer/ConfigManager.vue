@@ -2,7 +2,7 @@
   <div class="common-layout">
     <el-container>
       <el-header class="header" style="--wails-draggable: drag">
-        <!-- <div>
+        <div>
           <el-select v-model="mode" class="select" placeholder="请选择导出模式" style="width: 150px; margin-right: 10px">
             <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -20,18 +20,18 @@
               <el-form-item label="复制模板：" label-width="140px">
                 <el-select placeholder="Select" clearable v-model="addTag" style="width: 100%;">
                   <el-option key="empty" label="空模板" value="empty" />
-                  <el-option v-for="item in canBanchTemplate" :key="item.value" :label="item.lable"
-                    :value="item.value" />
+                  <el-option v-for="item in canBanchTemplate" :key="item" :label="item" :value="item" />
                 </el-select>
               </el-form-item>
               <div style=" align-self: center;">
-                <el-button v-if="banchTarget == '' || addTag == ''" type="primary" disabled>确定</el-button>
-                <el-button v-else type="primary" @click="banchAddConfig()">确定</el-button>
-                <el-button type="primary" @click="cancelAdd">取消</el-button>
+                <el-button type="primary" @click="banchAddConfig" :disabled="banchTarget == '' || addTag == ''">
+                  <span>确定</span>_
+                </el-button>
+                <el-button type="primary" @click="cancelAdd"> <span>取消</span> </el-button>
               </div>
             </div>
           </el-popover>
-        </div> -->
+        </div>
         <Toolbar />
       </el-header>
     </el-container>
@@ -113,7 +113,7 @@ import { ElNotification } from "element-plus";
 import { stringify } from "yaml";
 import { loadPB } from "../../function/pb"
 import { Close } from '@element-plus/icons-vue'
-import { isArray } from "lodash";
+import { isArray, range } from "lodash";
 
 import Logo from "./components/Logo.vue";
 import Toolbar from "./components/toolbar.vue";
@@ -124,7 +124,7 @@ const commonConfig = 'CommonConfig'
 
 // 全局变量
 var templates: { [k: string]: TreeNode[] } = {}
-var configTree = ref<Tree>()
+var configTree = ref<Tree>({})
 const showing = ref();
 
 // #region Init
@@ -158,14 +158,14 @@ const SaveConfig = async () => {
   trimAllCommon(data)
   await window.go.main.App.SaveConfig(JSON.stringify(data, null, 2)).then((resp) => {
     if (resp.Error != '') {
-      showError(resp.Error)
+      showError()
     }
   })
   // 生成配置文件
   let yamlData = genYaml(mode.value);
   await window.go.main.App.GenConfig(yamlData).then((resp: any) => {
     if (resp.Error != '') {
-      showError(resp.Error)
+      showError()
     } else {
       showSuccess('保存并生成配置文件成功')
     }
@@ -174,7 +174,7 @@ const SaveConfig = async () => {
 const SyncDataTable = async () => {
   await window.go.main.App.SyncData().then((resp: any) => {
     if (resp.Error != '') {
-      showError(resp.Error)
+      showError()
     } else {
       showSuccess('同步数据表成功')
     }
@@ -391,17 +391,53 @@ function trimAllCommon(tree: Tree) {
 // #endregion
 
 // #region 菜单UI
-const addTag = ref("")
-const showDelete = ref("")
-const visible = ref("")
-const newConfigName = ref("")
+const addTag = ref('')
+const showDelete = ref('')
+const visible = ref('')
+const newConfigName = ref('')
+const banchTarget = ref('')
+const banchVisible = ref(false)
+const canBanchTemplate = ref<string[]>([])
+
+//判断哪些模式是都有了
+function checkBanch() {
+  let keys = Object.keys(configTree.value)
+  if (keys.length > 0) {
+    let modes = Object.keys(configTree.value[keys[0]])
+    let common: string[] = []
+    for (let i of modes) {
+      let isCommon = true
+      for (let sn of keys) {
+        if (!(i in configTree.value[sn])) {
+          isCommon = false
+          break
+        }
+      }
+      if (isCommon) {
+        common.push(i)
+      }
+    }
+    console.log('common: ', common)
+    canBanchTemplate.value = common
+  }
+}
+
+function banchAddConfig() {
+  let newModes = banchTarget.value.split(',')
+  for (let mode of newModes) {
+    for (let sn in configTree.value) {
+      if (mode in configTree.value[sn]) {
+        continue
+      }
+      addConfig(sn, mode)
+    }
+  }
+  cancelAdd()
+}
+
 function handleSelect(index: string, service: string, mode: string) {
   showDelete.value = index;
   showing.value = configTree.value[service][mode];
-}
-
-function deleteHandle(service: any, mode: any) {
-  delete configTree.value[service][mode]
 }
 
 function confirmDelete(service: any, mode: any) {
@@ -455,17 +491,20 @@ function addConfig(service: any, name: any) {
     trimCommon(configTree.value[service][name])
   }
   // 绑定common配置
-  if (service == commonConfig) {
-    for (let s in configTree.value) {
-      if (name in configTree.value[s] && s != service) {
-        setCommon(configTree.value[service][name], configTree.value[s][name])
+  if (commonConfig in configTree.value) {
+    if (service == commonConfig) {
+      for (let s in configTree.value) {
+        if (name in configTree.value[s] && s != service) {
+          setCommon(configTree.value[service][name], configTree.value[s][name])
+        }
+      }
+    } else {
+      if (name in configTree.value[commonConfig]) {
+        setCommon(configTree.value[commonConfig][name], configTree.value[service][name])
       }
     }
-  } else {
-    if (name in configTree.value[commonConfig]) {
-      setCommon(configTree.value[commonConfig][name], configTree.value[service][name])
-    }
   }
+
   //加入导出mode列表
   let isValid = false
   for (let i = 0; i < options.value.length; i++) {
@@ -495,12 +534,12 @@ const options = ref([] as ModeOption[])
 // #endregion
 
 // #region utils
-const showError = (msg: string) => {
+const showError = () => {
   return ElNotification({
     title: "Error",
-    message: msg,
+    message: "操作错误, 请查看日志！",
     type: "error",
-    duration: 1000,
+    duration: 3000,
   });
 }
 const showSuccess = (msg: string) => {
